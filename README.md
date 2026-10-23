@@ -13,16 +13,19 @@ parses arguments, keeps two files on disk, and installs a logger.
 cargo build --release --features gst
 ```
 
-Without `--features gst` the program builds and runs with `--render null`, which reads a
-session and plays nothing. With it, GStreamer must be installed: the development files to
+Without `--features gst` the program builds and plays nothing (`--render null`), which
+reads a session and is how it is checked without a sound card. With it, GStreamer must be installed: the development files to
 build, the runtime and its plugins to play. See the backend repository's README for the
 element list per platform.
 
 ## Running
 
 ```sh
-parlor --name "Living room" --port 7000 --render gst
+parlor -n "Living room" -pin 1234
 ```
+
+A build with the `gst` feature plays through GStreamer by default, which is what a UxPlay
+command expects; `--render null` is there for a session that should be read without sound.
 
 On an iPhone or iPad, open the AirPlay menu, pick the receiver and type the PIN the program
 prints. Screen mirroring starts as soon as the client connects; audio follows whenever the
@@ -30,52 +33,62 @@ client plays something.
 
 ## Options
 
+The names match UxPlay's command line, so a UxPlay command runs here unchanged for
+everything this receiver can honour:
+
 | Option | Meaning |
 | --- | --- |
-| `--name <name>` | the name clients see; defaults to `parlor` |
-| `--port <port>` | control port; defaults to 7000, `0` picks a free one |
-| `--pin [<digits>]` | ask for a PIN, optionally a fixed one; this is the default |
-| `--no-pin` | do not ask for a PIN |
-| `--password <password>` | also require the digest password at `SETUP` |
-| `--device-id <address>` | advertise this hardware address |
-| `--seed <hex>` | 32 bytes of identity, as 64 hex characters |
-| `--log <file>` | append the request trace to a file |
-| `--render <null\|gst>` | what plays the media; `null` by default |
-| `--audio-sink <name>` | GStreamer audio sink |
-| `--video-sink <name>` | GStreamer video sink; changing it also changes the decoder |
-| `--video-parser <name>` | the parser the mirror pipeline starts with |
-| `--video-decoder <name>` | the decoder that follows it |
-| `--warm-video` | start the video pipeline with the receiver |
-| `--pace-video` | hold video to its capture spacing, for even frames at some latency |
-| `--width <pixels>` / `--height <pixels>` | the display offered to a client; 1920x1080 by default |
-| `--refresh-rate <hz>` | the refresh rate offered; 60 by default |
-| `--max-fps <fps>` | the highest frame rate asked of the client; 30 by default |
-| `--overscanned` | offer an overscanned display |
-| `--hevc` | allow HEVC and offer 4K, which is upstream's `-h265` |
-| `--features <hex>` | the feature bitmap to advertise |
-| `--restrict` | admit only the devices named with `--allow` |
-| `--allow <deviceID>` | a device that may connect; repeatable |
-| `--block <deviceID>` | a device that never may; repeatable |
-| `--legacy-ports` | bind upstream's fixed media port layout |
-| `--timing-port` / `--udp-control-port` / `--data-port` / `--mirror-port` | pin one media port |
-| `--nohold` | a new client takes over from the current one |
-| `--reset <seconds>` | close a session with no `/feedback` for n seconds; `0` never |
-| `--audio-latency <seconds>` | the audio delay a client schedules against; 0.25 by default |
-| `--volume <0..1>` | the volume a session starts at; full by default |
-| `--taper` | use the tapered volume profile, which is upstream's `-taper` |
-| `--db <low:high>` | rescale the volume slider onto a dB range; `-30:0` by default |
-| `--fps-data` | log the client's own streaming reports, which is upstream's `-FPSdata` |
-| `--cover-art [file]` | report cover art, or write it to a file; upstream's `-ca` |
-| `--metadata <file>` | write now-playing text to a file; upstream's `-md` |
-| `--dacp <file>` | export the remote-control identifiers; upstream's `-dacp` |
-| `--audio-codec <alac\|aac-eld>` | the coding a client sends; `aac-eld` by default |
-| `--help` | print the usage text and exit |
+| `-n <name>` | the name clients see; defaults to `parlor` |
+| `-nh` | accepted; this receiver never appends a hostname |
+| `-h265` | allow HEVC and offer 4K |
+| `-pin [nnnn]` | ask for a PIN, optionally a fixed one; this is the default |
+| `-pw [password]` | require a password; without one, a random one is printed |
+| `-m [mac]` | advertise this hardware address |
+| `-key [file]` | where the identity seed lives; without a file nothing is stored |
+| `-reg [file]` | where remembered clients live |
+| `-p [n]` | upstream's fixed port layout, or a base port `n` |
+| `-al <seconds>` | the audio delay a client schedules against; 0.25 by default |
+| `-vol <0..1>` | the volume a session starts at |
+| `-db <low:high>` | rescale the volume slider onto a dB range; `-30:0` by default |
+| `-taper` | use the tapered volume profile |
+| `-s <w>x<h>[@<r>]` | the display offered to a client; 1920x1080@60 by default |
+| `-fps <fps>` | the highest frame rate asked of the client; 30 by default |
+| `-o` | offer an overscanned display |
+| `-as <sink>` / `-vs <sink>` | GStreamer audio and video sinks |
+| `-vp <parser>` / `-vd <decoder>` | the parser and decoder the mirror pipeline uses |
+| `-avdec` | force the software decoder |
+| `-ca [file]` | report cover art, or write it to a file |
+| `-md <file>` | write now-playing text to a file |
+| `-dacp [file]` | export the remote-control identifiers |
+| `-reset <seconds>` | close a session with no `/feedback` for n seconds; `0` never |
+| `-nohold` | a new client takes over from the current one |
+| `-restrict` / `-allow <id>` / `-block <id>` | which clients may connect |
+| `-FPSdata` | log the client's own streaming reports |
+| `-d` | more detail in the log |
+| `-h`, `-help` | print the usage text and exit |
+
+A UxPlay option this receiver cannot honour is refused with the reason rather than
+ignored: `-hls` and its tuning options, `-mp4`, `-p2p`, `-vsync`, `-async`, `-vrtp`,
+`-artp`, `-v4l2`, `-bt709`, `-srgb`, `-fs`, `-f`, `-r`, `-nc`, `-nofreeze` and `-vc`.
+A command that needs one of them has to fail where the user can see it, not play a session
+that quietly is not what was asked for.
+
+Everything also has a long name, for a script that prefers words: `--name`, `--port`,
+`--no-pin`, `--password`, `--device-id`, `--seed`, `--log`, `--render`, `--audio-sink`,
+`--video-sink`, `--video-parser`, `--video-decoder`, `--warm-video`, `--pace-video`,
+`--width`, `--height`, `--refresh-rate`, `--max-fps`, `--overscanned`, `--hevc`,
+`--features`, `--restrict`, `--allow`, `--block`, `--legacy-ports`, `--timing-port`,
+`--udp-control-port`, `--data-port`, `--mirror-port`, `--nohold`, `--reset`,
+`--audio-latency`, `--volume`, `--taper`, `--db`, `--fps-data`, `--cover-art`,
+`--metadata`, `--dacp`, `--audio-codec`, `--key-file`, `--clients-file`,
+`--ephemeral-seed`, `--random-password`, `--verbose` and `--base-port`.
 
 The program keeps two files in the local application data directory, `parlor/identity.seed`
 and `parlor/clients`. The first is created on the first run and is what keeps the receiver's
 identity stable; the second lists client keys, one 64-character hex key per line. Deleting
 the identity makes every client pair again; deleting the client list keeps the identity and
-forgets the clients.
+forgets the clients. `-key` and `-reg` move those files, and `-key` with no file keeps the
+identity in memory only.
 
 ## Latency
 

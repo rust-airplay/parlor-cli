@@ -16,62 +16,68 @@ use rust_airplay::server::PinMode;
 use rust_airplay::{AudioCodec, Renderer};
 
 /// The receiver usage text.
-const USAGE: &str = "\
-parlor - an AirPlay receiver
+const USAGE: &str = "parlor - an AirPlay receiver
 
 Usage: parlor [options]
 
-Options:
-  --name <name>          Name clients show (default: parlor)
-  --port <port>          Control port, 0 picks a free one (default: 7000)
-  --pin [<digits>]       Ask for a PIN, optionally fixed (default: one-time PIN)
-  --no-pin               Do not ask for a PIN (legacy pairing only)
-  --password <password>  Also require the SETUP digest password
-  --device-id <address>  Advertised hardware address (default: from the seed)
-  --seed <hex>           Identity seed, 32 bytes of hex (default: stored file)
-  --log <file>           Append the request trace to a file, for archiving a session
-  --render <backend>     What plays the media: null (default) or gst
-  --audio-sink <name>    GStreamer audio sink
-  --video-sink <name>    GStreamer video sink
-  --video-parser <name>  GStreamer parser for the mirror stream
-  --video-decoder <name> GStreamer decoder for the mirror stream
-  --warm-video           Start the video pipeline with the receiver
-  --pace-video           Hold video to its capture spacing (smoother, later)
+The names match UxPlay's command line, so a UxPlay command works here:
 
-  --width <pixels>       Display width offered to the client (default: 1920)
-  --height <pixels>      Display height offered to the client (default: 1080)
-  --refresh-rate <hz>    Display refresh rate (default: 60)
-  --max-fps <fps>        Highest frame rate asked of the client (default: 30)
-  --overscanned          Offer an overscanned display
-  --hevc                 Allow HEVC and offer 4K (upstream -h265)
-  --features <hex>       Feature bitmap to advertise (default: the library's)
-  --restrict             Admit only the devices named with --allow
-  --allow <deviceID>     A device that may connect (repeatable)
-  --block <deviceID>     A device that never may (repeatable)
-  --legacy-ports         Bind upstream's fixed media port layout
-  --timing-port <port>   UDP timing port (0 = the system picks)
-  --udp-control-port <p> UDP control port
-  --data-port <port>     UDP data port
-  --mirror-port <port>   TCP mirror listener port
-  --nohold               A new client takes over from the current one
-  --reset <seconds>      Close a session with no /feedback for n seconds (0 = never)
-  --audio-latency <s>    Audio delay reported to the client (default: 0.25)
-  --volume <0..1>        Volume a session starts at (default: 1.0)
-  --taper                Use the tapered volume profile (upstream -taper)
-  --db <low:high>        Rescale the volume slider onto this dB range (upstream -db)
-  --fps-data             Log the client's streaming reports (upstream -FPSdata)
-  --cover-art [<file>]   Show the size of cover art, or write it to a file (upstream -ca)
-  --metadata <file>      Write the now-playing text to a file (upstream -md)
-  --dacp <file>          Export the remote-control identifiers to a file (upstream -dacp)
-  --audio-codec <codec>  alac or aac-eld, what the client's frames are
-  --help                 Print this text
+  -n <name>          Name clients show (default: parlor)
+  -nh                Accepted; this receiver never appends a hostname
+  -h265              Allow HEVC and offer 4K
+  -pin [nnnn]        Ask for a PIN, optionally fixed (default: one-time PIN)
+  -pw [password]     Require a SETUP password; without one, a random one is printed
+  -m [mac]           Advertised hardware address (default: from the identity)
+  -key [file]        Where the identity seed lives; without one nothing is stored
+  -reg [file]        Where remembered clients live
+  -p [n]             Upstream's fixed port layout, or a base port n
+  -al <seconds>      Audio delay reported to the client (default: 0.25)
+  -vol <0..1>        Volume a session starts at (default: 1.0)
+  -db <low:high>     Rescale the volume slider onto this dB range
+  -taper             Tapered volume profile
+  -s <w>x<h>[@<r>]   Display offered to the client (default: 1920x1080@60)
+  -fps <fps>         Highest frame rate asked of the client (default: 30)
+  -o                 Offer an overscanned display
+  -as <sink>         GStreamer audio sink
+  -vs <sink>         GStreamer video sink
+  -vp <parser>       GStreamer parser for the mirror stream
+  -vd <decoder>      GStreamer decoder for the mirror stream
+  -avdec             Force the software decoder
+  -ca [file]         Report cover art, or write it to a file
+  -md <file>         Write the now-playing text to a file
+  -dacp [file]       Export the remote-control identifiers to a file
+  -reset <seconds>   Close a session with no /feedback for n seconds (0 = never)
+  -nohold            A new client takes over from the current one
+  -restrict          Admit only the devices named with -allow
+  -allow <id>        A device that may connect (repeatable)
+  -block <id>        A device that never may (repeatable)
+  -FPSdata           Log the client's streaming reports
+  -d                 More detail in the log
+  -h, -help          Print this text
 
-`--render null` reads the media, decrypts and orders it, and plays nothing, which is how
-a session is checked without a sound card. `--render gst` hands it to GStreamer, and only
-a build with the `gst` feature has that backend.
+The same options spelled out, for a script that prefers words:
 
-Which audio coding a client sends is not something SETUP says, so it is given here:
-`aac-eld` is what a current client sends, `alac` is what an AirPlay 1 one does.";
+  --name --port --no-pin --password --device-id --seed --log --render
+  --audio-sink --video-sink --video-parser --video-decoder --warm-video
+  --pace-video --width --height --refresh-rate --max-fps --overscanned
+  --hevc --features --restrict --allow --block --legacy-ports --timing-port
+  --udp-control-port --data-port --mirror-port --nohold --reset
+  --audio-latency --volume --taper --db --fps-data --cover-art --metadata
+  --dacp --audio-codec --key-file --clients-file --ephemeral-seed
+  --random-password --verbose --base-port
+
+A UxPlay option this receiver cannot honour is refused with the reason, not
+ignored: -hls and its tuning options (-lang, -slang, -custom, -rpi), -mp4,
+-p2p, -vsync, -async, -vrtp, -artp, -v4l2, -bt709, -srgb, -fs, -f, -r, -nc,
+-nofreeze and -vc.
+
+`--render null` reads the media, decrypts and orders it, and plays nothing,
+which is how a session is checked without a sound card. `--render gst` hands it
+to GStreamer. A build with the `gst` feature plays through GStreamer unless told
+otherwise.
+
+Which audio coding a client sends is stated in SETUP; `--audio-codec` is only
+what a session falls back to when the client never says.";
 
 /// Everything the receiver needs before it starts.
 #[derive(Debug, Clone)]
@@ -137,6 +143,18 @@ struct Options {
     metadata: Option<std::path::PathBuf>,
     /// File to export the remote-control identifiers to.
     dacp: Option<std::path::PathBuf>,
+    /// Whether to keep the identity in `key_file` instead of the default place.
+    ephemeral_seed: bool,
+    /// Where the identity seed lives, when the user named a file.
+    key_file: Option<std::path::PathBuf>,
+    /// Where remembered clients live, when the user named a file.
+    clients_file: Option<std::path::PathBuf>,
+    /// Whether to print a random password and require it, upstream's `-pw` without one.
+    random_password: bool,
+    /// A base port, upstream's `-p n`.
+    base_port: Option<u16>,
+    /// Whether to log at debug level, upstream's `-d`.
+    verbose: bool,
 }
 
 /// What plays the media a client sends.
@@ -160,7 +178,11 @@ impl Default for Options {
             device_id: None,
             seed: None,
             log: None,
-            render: RenderBackend::Null,
+            render: if cfg!(feature = "gst") {
+                RenderBackend::Gst
+            } else {
+                RenderBackend::Null
+            },
             audio_sink: None,
             video_sink: None,
             video_parser: None,
@@ -176,6 +198,12 @@ impl Default for Options {
             cover_art: None,
             metadata: None,
             dacp: None,
+            ephemeral_seed: false,
+            key_file: None,
+            clients_file: None,
+            random_password: false,
+            base_port: None,
+            verbose: false,
             hevc: false,
             features: None,
             restrict: false,
@@ -289,11 +317,19 @@ async fn run() -> Result<(), String> {
             return Ok(());
         }
     };
-    install_logger();
+    install_logger(options.verbose);
 
     let seed = match options.seed {
         Some(seed) => seed,
-        None => load_or_create_seed()?,
+        // `-key` without a file means "do not keep an identity", which is upstream's
+        // behaviour and what a test run wants: pairing works, and nothing is left behind.
+        None if options.ephemeral_seed => {
+            println!("identity  ephemeral (nothing is stored)");
+            let mut seed = [0u8; 32];
+            getrandom::getrandom(&mut seed).map_err(|error| format!("no random bytes: {error}"))?;
+            seed
+        }
+        None => load_or_create_seed(options.key_file.as_deref())?,
     };
     // The renderer is chosen before anything is advertised, because a backend this build
     // or this machine cannot provide is something to say now rather than when a client is
@@ -306,7 +342,10 @@ async fn run() -> Result<(), String> {
     // The registry lives here, not in the library: a receiver decides for itself how it
     // remembers clients (`docs/ARCHITECTURE.md`). The library is handed the
     // set, and a callback that writes a newly verified key.
-    let clients_file = clients_path()?;
+    let clients_file = match &options.clients_file {
+        Some(path) => path.clone(),
+        None => clients_path()?,
+    };
     let clients = Arc::new(Mutex::new(load_clients(&clients_file)));
     let on_client: rust_airplay::receiver::ClientCallback = {
         let path = clients_file.clone();
@@ -330,7 +369,18 @@ async fn run() -> Result<(), String> {
         (options.width, options.height)
     };
 
-    let ports = media_ports(&options);
+    // `-pw` without a password asks for one to be drawn; upstream draws a fresh one per
+    // connection, this receiver draws one for the run and prints it.
+    let mut password = options.password.clone();
+    if options.random_password && password.is_none() {
+        let mut bytes = [0u8; 6];
+        getrandom::getrandom(&mut bytes).map_err(|error| format!("no random bytes: {error}"))?;
+        let drawn = hex(&bytes);
+        println!("password  {drawn}");
+        password = Some(drawn);
+    }
+
+    let (control_port, ports) = resolve_ports(&options);
     let on_artwork = options.cover_art.as_ref().map(|path| {
         let path = path.clone();
         std::sync::Arc::new(move |mime: &str, bytes: &[u8]| {
@@ -378,11 +428,11 @@ async fn run() -> Result<(), String> {
 
     let config = rust_airplay::Config {
         name: options.name,
-        port: options.port,
+        port: control_port,
         seed,
         device_id: options.device_id,
         pin: options.pin,
-        password: options.password,
+        password,
         audio_codec: options.audio_codec,
         renderer,
         clients,
@@ -429,7 +479,7 @@ async fn run() -> Result<(), String> {
 ///
 /// The library emits `log` records rather than printing, because a library that writes to
 /// standard output takes that decision away from the program embedding it.
-fn install_logger() {
+fn install_logger(verbose: bool) {
     struct Terminal;
 
     impl log::Log for Terminal {
@@ -448,7 +498,12 @@ fn install_logger() {
         fn flush(&self) {}
     }
 
-    let _ = log::set_logger(&Terminal).map(|()| log::set_max_level(log::LevelFilter::Info));
+    let level = if verbose {
+        log::LevelFilter::Debug
+    } else {
+        log::LevelFilter::Info
+    };
+    let _ = log::set_logger(&Terminal).map(|()| log::set_max_level(level));
 }
 
 /// Reads a 32 byte seed from hex.
@@ -494,12 +549,38 @@ fn media_ports(options: &Options) -> rust_airplay::media::ports::MediaPorts {
     ports
 }
 
+/// The control port and media ports this run binds.
+///
+/// `-p n` is upstream's layout: `tcp[0..3]` and `udp[0..3]` are `n..n+2`, and the RTSP
+/// control port is `tcp[1]`, which is `n+1`. Legacy and explicit port flags keep their own
+/// meaning, and a base port overrides them all because it names the whole layout.
+fn resolve_ports(options: &Options) -> (u16, rust_airplay::media::ports::MediaPorts) {
+    let Some(base) = options.base_port else {
+        return (options.port, media_ports(options));
+    };
+    let ports = rust_airplay::media::ports::MediaPorts {
+        timing: base,
+        control: base.saturating_add(1),
+        data: base.saturating_add(2),
+        mirror: base,
+    };
+    (base.saturating_add(1), ports)
+}
+
 /// The directory this program keeps its files in.
 fn data_directory() -> Result<std::path::PathBuf, String> {
     let base = std::env::var("LOCALAPPDATA")
         .or_else(|_| std::env::var("HOME"))
         .map_err(|_| "neither LOCALAPPDATA nor HOME is set".to_owned())?;
     Ok(std::path::Path::new(&base).join("parlor"))
+}
+
+/// Where `-dacp` writes when it is given no file.
+///
+/// Upstream writes `$HOME/.uxplay.dacp`; this program keeps its files together instead, so
+/// the default is the same directory as the identity.
+fn default_dacp_path() -> Result<std::path::PathBuf, String> {
+    Ok(data_directory()?.join("dacp"))
 }
 
 /// Path of the identity seed inside the user's local application data.
@@ -511,8 +592,11 @@ fn seed_path() -> Result<std::path::PathBuf, String> {
 ///
 /// The library never touches the filesystem. A receiver that had to be paired again after
 /// every restart is what this file prevents.
-fn load_or_create_seed() -> Result<[u8; 32], String> {
-    let path = seed_path()?;
+fn load_or_create_seed(path: Option<&std::path::Path>) -> Result<[u8; 32], String> {
+    let path = match path {
+        Some(path) => path.to_path_buf(),
+        None => seed_path()?,
+    };
     if let Ok(text) = std::fs::read_to_string(&path) {
         return parse_seed(&text);
     }
@@ -569,7 +653,178 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
     let mut arguments = arguments.peekable();
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
-            "--help" | "-h" => return Ok(None),
+            "--help" | "-h" | "-help" => return Ok(None),
+
+            // UxPlay's names. A command written for it runs here unchanged for everything
+            // this receiver can honour.
+            "-n" => options.name = next_value(&mut arguments, "-n")?,
+            // Accepted, and there is nothing to do: a name is the name, and this receiver
+            // never appends a hostname to it.
+            "-nh" => {}
+            "-h265" => options.hevc = true,
+            "-pin" => {
+                options.pin = match optional_value(&mut arguments) {
+                    Some(digits) => PinMode::Fixed(
+                        digits
+                            .parse()
+                            .map_err(|_| format!("-pin: {digits} is not a PIN"))?,
+                    ),
+                    None => PinMode::OneTime,
+                };
+            }
+            "-pw" => match optional_value(&mut arguments) {
+                Some(password) => options.password = Some(password),
+                // Upstream draws a password at each connection; this receiver prints one
+                // and keeps it for the run, which is the same promise to the user.
+                None => options.random_password = true,
+            },
+            "-m" => {
+                if let Some(value) = optional_value(&mut arguments) {
+                    options.device_id = Some(value);
+                }
+            }
+            "-key" => match optional_value(&mut arguments) {
+                Some(path) => options.key_file = Some(std::path::PathBuf::from(path)),
+                None => options.ephemeral_seed = true,
+            },
+            "-reg" => {
+                if let Some(path) = optional_value(&mut arguments) {
+                    options.clients_file = Some(std::path::PathBuf::from(path));
+                }
+            }
+            "-p" => match optional_value(&mut arguments) {
+                // Upstream also accepts `-p tcp <list>` and `-p udp <list>`; a list is
+                // refused rather than read as a port, so the message says what happened.
+                Some(kind) if kind == "tcp" || kind == "udp" => {
+                    return Err(format!(
+                        "-p {kind} <list> is not supported; this receiver takes -p or -p <base>
+
+{USAGE}"
+                    ));
+                }
+                Some(base) => {
+                    options.base_port = Some(
+                        base.parse()
+                            .map_err(|_| format!("-p: {base} is not a port"))?,
+                    );
+                }
+                None => options.legacy_ports = true,
+            },
+            "-al" => {
+                options.audio_latency = next_value(&mut arguments, "-al")?
+                    .parse()
+                    .map_err(|_| "-al: not a number of seconds".to_owned())?;
+            }
+            "-vol" => {
+                options.volume = next_value(&mut arguments, "-vol")?
+                    .parse()
+                    .map_err(|_| "-vol: not a number".to_owned())?;
+            }
+            "-db" => {
+                let value = next_value(&mut arguments, "-db")?;
+                let (low, high) = value
+                    .split_once(':')
+                    .ok_or_else(|| format!("-db: {value} is not low:high"))?;
+                options.db_low = low
+                    .parse()
+                    .map_err(|_| format!("-db: {low} is not a number"))?;
+                options.db_high = high
+                    .parse()
+                    .map_err(|_| format!("-db: {high} is not a number"))?;
+            }
+            "-taper" => options.taper = true,
+            "-s" => {
+                let (width, height, rate) = parse_display(&next_value(&mut arguments, "-s")?)?;
+                options.width = width;
+                options.height = height;
+                if let Some(rate) = rate {
+                    options.refresh_rate = rate;
+                }
+            }
+            "-fps" => {
+                options.max_fps = next_value(&mut arguments, "-fps")?
+                    .parse()
+                    .map_err(|_| "-fps: not a number".to_owned())?;
+            }
+            "-o" => options.overscanned = true,
+            "-as" => options.audio_sink = Some(next_value(&mut arguments, "-as")?),
+            "-vs" => options.video_sink = Some(next_value(&mut arguments, "-vs")?),
+            "-vp" => options.video_parser = Some(next_value(&mut arguments, "-vp")?),
+            "-vd" => options.video_decoder = Some(next_value(&mut arguments, "-vd")?),
+            "-avdec" => {
+                options.video_decoder =
+                    Some("avdec_h264 ! videoconvert ! video/x-raw,format=I420".to_owned());
+            }
+            "-ca" => {
+                options.cover_art = optional_value(&mut arguments).map(std::path::PathBuf::from);
+            }
+            "-md" => {
+                options.metadata =
+                    Some(std::path::PathBuf::from(next_value(&mut arguments, "-md")?));
+            }
+            "-dacp" => {
+                options.dacp = Some(match optional_value(&mut arguments) {
+                    Some(path) => std::path::PathBuf::from(path),
+                    None => default_dacp_path()?,
+                });
+            }
+            "-reset" => {
+                options.reset_after = next_value(&mut arguments, "-reset")?
+                    .parse()
+                    .map_err(|_| "-reset: not a number of seconds".to_owned())?;
+            }
+            "-nohold" => options.nohold = true,
+            "-restrict" => options.restrict = true,
+            "-allow" => options.allow.push(next_value(&mut arguments, "-allow")?),
+            "-block" => options.block.push(next_value(&mut arguments, "-block")?),
+            "-FPSdata" => options.fps_data = true,
+            "-d" => options.verbose = true,
+
+            // Options this receiver cannot honour are refused with the reason. A UxPlay
+            // command that asks for HLS or for recording has to fail where the user can see
+            // it, not play a session that quietly is not what was asked for.
+            "-hls" | "-vsync" | "-async" | "-bt709" | "-srgb" | "-fs" | "-nc" | "-nofreeze"
+            | "-scrsv" | "-p2p" => {
+                return Err(format!(
+                    "{} is not supported by this receiver
+
+{USAGE}",
+                    argument
+                ));
+            }
+            "-lang" | "-slang" | "-custom" | "-rpi" | "-mp4" | "-vrtp" | "-artp" | "-vc"
+            | "-v4l2" | "-f" | "-r" => {
+                return Err(format!(
+                    "{} is not supported by this receiver (its feature is not implemented)
+
+{USAGE}",
+                    argument
+                ));
+            }
+
+            "--key-file" => {
+                options.key_file = Some(std::path::PathBuf::from(next_value(
+                    &mut arguments,
+                    "--key-file",
+                )?));
+            }
+            "--clients-file" => {
+                options.clients_file = Some(std::path::PathBuf::from(next_value(
+                    &mut arguments,
+                    "--clients-file",
+                )?));
+            }
+            "--ephemeral-seed" => options.ephemeral_seed = true,
+            "--random-password" => options.random_password = true,
+            "--verbose" => options.verbose = true,
+            "--base-port" => {
+                options.base_port = Some(
+                    next_value(&mut arguments, "--base-port")?
+                        .parse()
+                        .map_err(|_| "--base-port: not a port".to_owned())?,
+                );
+            }
+
             "--name" => options.name = next_value(&mut arguments, "--name")?,
             "--port" => {
                 options.port = next_value(&mut arguments, "--port")?
@@ -753,4 +1008,151 @@ fn next_value(
     arguments
         .next()
         .ok_or_else(|| format!("{option} needs a value"))
+}
+
+/// Takes the next argument when it is a value rather than another option.
+///
+/// Upstream's optional-value options (`-pin`, `-pw`, `-key`, `-ca`, `-dacp`) are written
+/// `-pin 1234` or `-pin`, and the difference is whether the next word starts with a dash.
+fn optional_value(
+    arguments: &mut std::iter::Peekable<impl Iterator<Item = String>>,
+) -> Option<String> {
+    match arguments.peek() {
+        Some(next) if !next.starts_with('-') => arguments.next(),
+        _ => None,
+    }
+}
+
+/// Reads a display the way upstream writes one: `1920x1080` or `1920x1080@60`.
+fn parse_display(text: &str) -> Result<(u64, u64, Option<f64>), String> {
+    let (size, rate) = match text.split_once('@') {
+        Some((size, rate)) => {
+            let rate: f64 = rate
+                .parse()
+                .map_err(|_| format!("-s: {rate} is not a refresh rate"))?;
+            (size, Some(rate))
+        }
+        None => (text, None),
+    };
+    let (width, height) = size
+        .split_once(['x', 'X'])
+        .ok_or_else(|| format!("-s: {size} is not <width>x<height>"))?;
+    let width: u64 = width
+        .parse()
+        .map_err(|_| format!("-s: {width} is not a width"))?;
+    let height: u64 = height
+        .parse()
+        .map_err(|_| format!("-s: {height} is not a height"))?;
+    Ok((width, height, rate))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Options, PinMode, RenderBackend, parse_arguments, resolve_ports};
+
+    fn parse(arguments: &[&str]) -> Result<Options, String> {
+        parse_arguments(arguments.iter().map(|argument| (*argument).to_owned()))
+            .map(|options| options.expect("not a help request"))
+    }
+
+    #[test]
+    fn a_uxplay_command_line_reaches_the_same_options() {
+        // The point of the compatibility names: a command written for UxPlay runs here.
+        let options = parse(&[
+            "-n",
+            "Parlor",
+            "-pin",
+            "1234",
+            "-s",
+            "1280x720@30",
+            "-fps",
+            "24",
+            "-o",
+            "-al",
+            "0.5",
+            "-vol",
+            "0.8",
+            "-taper",
+            "-db",
+            "-20:0",
+            "-nohold",
+            "-restrict",
+            "-allow",
+            "AABBCCDDEEFF",
+            "-FPSdata",
+        ])
+        .expect("parsed");
+        assert_eq!(options.name, "Parlor");
+        assert_eq!(options.pin, PinMode::Fixed(1234));
+        assert_eq!((options.width, options.height), (1280, 720));
+        assert_eq!(options.refresh_rate, 30.0);
+        assert_eq!(options.max_fps, 24);
+        assert!(options.overscanned);
+        assert_eq!(options.audio_latency, 0.5);
+        assert_eq!(options.volume, 0.8);
+        assert!(options.taper);
+        assert_eq!((options.db_low, options.db_high), (-20.0, 0.0));
+        assert!(options.nohold);
+        assert!(options.restrict);
+        assert_eq!(options.allow, vec!["AABBCCDDEEFF".to_owned()]);
+        assert!(options.fps_data);
+    }
+
+    #[test]
+    fn the_port_option_keeps_upstreams_layout() {
+        // `-p` alone is the fixed layout; `-p n` puts tcp and udp at n..n+2 and the control
+        // port at n+1 (`uxplay.cpp`, `-p` handling).
+        let fixed = parse(&["-p"]).expect("parsed");
+        assert!(fixed.legacy_ports);
+        assert!(fixed.base_port.is_none());
+
+        let based = parse(&["-p", "7000"]).expect("parsed");
+        assert_eq!(based.base_port, Some(7000));
+        let (control, ports) = resolve_ports(&based);
+        assert_eq!(control, 7001);
+        assert_eq!(
+            (ports.mirror, ports.timing, ports.control, ports.data),
+            (7000, 7000, 7001, 7002)
+        );
+    }
+
+    #[test]
+    fn key_and_password_take_an_optional_value() {
+        // `-key` with no file means the identity is not stored; `-pw` with no password means
+        // one is drawn and printed.
+        let ephemeral = parse(&["-key"]).expect("parsed");
+        assert!(ephemeral.ephemeral_seed);
+        assert!(ephemeral.key_file.is_none());
+
+        let stored = parse(&["-key", "seed.txt"]).expect("parsed");
+        assert!(!stored.ephemeral_seed);
+        assert_eq!(stored.key_file, Some(std::path::PathBuf::from("seed.txt")));
+
+        let drawn = parse(&["-pw"]).expect("parsed");
+        assert!(drawn.random_password);
+        assert!(drawn.password.is_none());
+
+        let given = parse(&["-pw", "hunter2"]).expect("parsed");
+        assert_eq!(given.password.as_deref(), Some("hunter2"));
+    }
+
+    #[test]
+    fn an_option_this_receiver_cannot_honour_is_refused_with_a_reason() {
+        let error = parse(&["-hls"]).expect_err("refused");
+        assert!(error.contains("not supported"), "{error}");
+        let error = parse(&["-mp4", "out.mp4"]).expect_err("refused");
+        assert!(error.contains("not supported"), "{error}");
+    }
+
+    #[test]
+    fn a_build_with_the_backend_plays_by_default() {
+        assert_eq!(
+            Options::default().render,
+            if cfg!(feature = "gst") {
+                RenderBackend::Gst
+            } else {
+                RenderBackend::Null
+            }
+        );
+    }
 }
