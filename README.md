@@ -64,6 +64,7 @@ client plays something.
 | `--volume <0..1>` | the volume a session starts at; full by default |
 | `--taper` | use the tapered volume profile, which is upstream's `-taper` |
 | `--db <low:high>` | rescale the volume slider onto a dB range; `-30:0` by default |
+| `--fps-data` | log the client's own streaming reports, which is upstream's `-FPSdata` |
 | `--audio-codec <alac\|aac-eld>` | the coding a client sends; `aac-eld` by default |
 | `--help` | print the usage text and exit |
 

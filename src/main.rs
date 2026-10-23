@@ -59,6 +59,7 @@ Options:
   --volume <0..1>        Volume a session starts at (default: 1.0)
   --taper                Use the tapered volume profile (upstream -taper)
   --db <low:high>        Rescale the volume slider onto this dB range (upstream -db)
+  --fps-data             Log the client's streaming reports (upstream -FPSdata)
   --audio-codec <codec>  alac or aac-eld, what the client's frames are
   --help                 Print this text
 
@@ -125,6 +126,8 @@ struct Options {
     /// The dB range the slider is rescaled onto.
     db_low: f64,
     db_high: f64,
+    /// Whether to log the client's streaming reports.
+    fps_data: bool,
 }
 
 /// What plays the media a client sends.
@@ -160,6 +163,7 @@ impl Default for Options {
             taper: false,
             db_low: -30.0,
             db_high: 0.0,
+            fps_data: false,
             hevc: false,
             features: None,
             restrict: false,
@@ -332,6 +336,7 @@ async fn run() -> Result<(), String> {
         pace_video: options.pace_video,
         audio_latency: std::time::Duration::from_secs_f64(options.audio_latency.max(0.0)),
         initial_volume: rust_airplay::Volume::new(options.volume),
+        log_streaming_reports: options.fps_data,
         volume_curve: rust_airplay::VolumeCurve {
             taper: options.taper,
             low_db: options.db_low,
@@ -621,6 +626,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
                     .map_err(|_| format!("--audio-latency: {value} is not a number"))?;
             }
             "--taper" => options.taper = true,
+            "--fps-data" => options.fps_data = true,
             "--db" => {
                 let value = next_value(&mut arguments, "--db")?;
                 let (low, high) = value
