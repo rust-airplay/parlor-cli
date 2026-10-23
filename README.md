@@ -47,6 +47,8 @@ client plays something.
 | `--video-decoder <name>` | the decoder that follows it |
 | `--warm-video` | start the video pipeline with the receiver |
 | `--pace-video` | hold video to its capture spacing, for even frames at some latency |
+| `--audio-latency <seconds>` | the audio delay a client schedules against; 0.25 by default |
+| `--volume <0..1>` | the volume a session starts at; full by default |
 | `--audio-codec <alac\|aac-eld>` | the coding a client sends; `aac-eld` by default |
 | `--help` | print the usage text and exit |
 

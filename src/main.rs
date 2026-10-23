@@ -38,6 +38,8 @@ Options:
   --warm-video           Start the video pipeline with the receiver
   --pace-video           Hold video to its capture spacing (smoother, later)
 
+  --audio-latency <s>    Audio delay reported to the client (default: 0.25)
+  --volume <0..1>        Volume a session starts at (default: 1.0)
   --audio-codec <codec>  alac or aac-eld, what the client's frames are
   --help                 Print this text
 
@@ -68,6 +70,10 @@ struct Options {
     warm_video: bool,
     /// Whether the mirror stream is paced by its timestamps.
     pace_video: bool,
+    /// Audio delay reported to the client, in seconds.
+    audio_latency: f64,
+    /// Volume a session starts at.
+    volume: f64,
 }
 
 /// What plays the media a client sends.
@@ -98,6 +104,8 @@ impl Default for Options {
             video_decoder: None,
             warm_video: false,
             pace_video: false,
+            audio_latency: 0.25,
+            volume: 1.0,
 
             // AirPlay 2 clients send AAC-ELD, which is what an iPhone or iPad paired with
             // this receiver sends.
@@ -237,6 +245,8 @@ async fn run() -> Result<(), String> {
         dump_video: std::env::var_os("AIRPLAY_DUMP_VIDEO").map(std::path::PathBuf::from),
         dump_audio: std::env::var_os("AIRPLAY_DUMP_AUDIO").map(std::path::PathBuf::from),
         pace_video: options.pace_video,
+        audio_latency: std::time::Duration::from_secs_f64(options.audio_latency.max(0.0)),
+        initial_volume: rust_airplay::Volume::new(options.volume),
     };
     rust_airplay::run(config)
         .await
@@ -412,6 +422,18 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
             }
             "--warm-video" => options.warm_video = true,
             "--pace-video" => options.pace_video = true,
+            "--audio-latency" => {
+                let value = next_value(&mut arguments, "--audio-latency")?;
+                options.audio_latency = value
+                    .parse::<f64>()
+                    .map_err(|_| format!("--audio-latency: {value} is not a number"))?;
+            }
+            "--volume" => {
+                let value = next_value(&mut arguments, "--volume")?;
+                options.volume = value
+                    .parse::<f64>()
+                    .map_err(|_| format!("--volume: {value} is not a number"))?;
+            }
 
             "--audio-codec" => {
                 let name = next_value(&mut arguments, "--audio-codec")?;
