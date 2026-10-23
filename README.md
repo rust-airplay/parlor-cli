@@ -56,6 +56,8 @@ client plays something.
 | `--restrict` | admit only the devices named with `--allow` |
 | `--allow <deviceID>` | a device that may connect; repeatable |
 | `--block <deviceID>` | a device that never may; repeatable |
+| `--legacy-ports` | bind upstream's fixed media port layout |
+| `--timing-port` / `--udp-control-port` / `--data-port` / `--mirror-port` | pin one media port |
 | `--audio-latency <seconds>` | the audio delay a client schedules against; 0.25 by default |
 | `--volume <0..1>` | the volume a session starts at; full by default |
 | `--audio-codec <alac\|aac-eld>` | the coding a client sends; `aac-eld` by default |

@@ -48,6 +48,11 @@ Options:
   --restrict             Admit only the devices named with --allow
   --allow <deviceID>     A device that may connect (repeatable)
   --block <deviceID>     A device that never may (repeatable)
+  --legacy-ports         Bind upstream's fixed media port layout
+  --timing-port <port>   UDP timing port (0 = the system picks)
+  --udp-control-port <p> UDP control port
+  --data-port <port>     UDP data port
+  --mirror-port <port>   TCP mirror listener port
   --audio-latency <s>    Audio delay reported to the client (default: 0.25)
   --volume <0..1>        Volume a session starts at (default: 1.0)
   --audio-codec <codec>  alac or aac-eld, what the client's frames are
@@ -92,6 +97,13 @@ struct Options {
     allow: Vec<String>,
     /// Devices that never may.
     block: Vec<String>,
+    /// Whether to bind upstream's fixed media port layout.
+    legacy_ports: bool,
+    /// Media ports, with `0` meaning the system picks.
+    timing_port: u16,
+    udp_control_port: u16,
+    data_port: u16,
+    mirror_port: u16,
     /// Display offered to a client in `/info`.
     width: u64,
     height: u64,
@@ -137,6 +149,11 @@ impl Default for Options {
             restrict: false,
             allow: Vec::new(),
             block: Vec::new(),
+            legacy_ports: false,
+            timing_port: 0,
+            udp_control_port: 0,
+            data_port: 0,
+            mirror_port: 0,
             width: 1920,
             height: 1080,
             refresh_rate: 60.0,
@@ -279,6 +296,7 @@ async fn run() -> Result<(), String> {
         (options.width, options.height)
     };
 
+    let ports = media_ports(&options);
     let config = rust_airplay::Config {
         name: options.name,
         port: options.port,
@@ -297,6 +315,7 @@ async fn run() -> Result<(), String> {
         audio_latency: std::time::Duration::from_secs_f64(options.audio_latency.max(0.0)),
         initial_volume: rust_airplay::Volume::new(options.volume),
         features,
+        ports,
         client_policy: rust_airplay::server::ClientPolicy {
             restrict: options.restrict,
             allow: options.allow,
@@ -358,6 +377,30 @@ fn parse_seed(text: &str) -> Result<[u8; 32], String> {
 /// Lower-case hex, for the one file this program writes.
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+/// The media ports this run binds.
+///
+/// `--legacy-ports` picks upstream's fixed layout; an explicit flag overrides one port of
+/// it rather than replacing the layout, so `--legacy-ports --data-port 6005` is a layout
+/// with one port moved.
+fn media_ports(options: &Options) -> rust_airplay::media::ports::MediaPorts {
+    let mut ports = if options.legacy_ports {
+        rust_airplay::media::ports::MediaPorts::legacy()
+    } else {
+        rust_airplay::media::ports::MediaPorts::automatic()
+    };
+    for (value, slot) in [
+        (options.timing_port, &mut ports.timing),
+        (options.udp_control_port, &mut ports.control),
+        (options.data_port, &mut ports.data),
+        (options.mirror_port, &mut ports.mirror),
+    ] {
+        if value != 0 {
+            *slot = value;
+        }
+    }
+    ports
 }
 
 /// The directory this program keeps its files in.
@@ -505,6 +548,27 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
                     .map_err(|_| "--max-fps: not a number".to_owned())?;
             }
             "--overscanned" => options.overscanned = true,
+            "--legacy-ports" => options.legacy_ports = true,
+            "--timing-port" => {
+                options.timing_port = next_value(&mut arguments, "--timing-port")?
+                    .parse()
+                    .map_err(|_| "--timing-port: not a port".to_owned())?;
+            }
+            "--udp-control-port" => {
+                options.udp_control_port = next_value(&mut arguments, "--udp-control-port")?
+                    .parse()
+                    .map_err(|_| "--udp-control-port: not a port".to_owned())?;
+            }
+            "--data-port" => {
+                options.data_port = next_value(&mut arguments, "--data-port")?
+                    .parse()
+                    .map_err(|_| "--data-port: not a port".to_owned())?;
+            }
+            "--mirror-port" => {
+                options.mirror_port = next_value(&mut arguments, "--mirror-port")?
+                    .parse()
+                    .map_err(|_| "--mirror-port: not a port".to_owned())?;
+            }
             "--restrict" => options.restrict = true,
             "--allow" => options.allow.push(next_value(&mut arguments, "--allow")?),
             "--block" => options.block.push(next_value(&mut arguments, "--block")?),

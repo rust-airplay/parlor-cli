@@ -48,6 +48,8 @@ parlor --name "Living room" --port 7000 --render gst
 | `--restrict` | 只允许用 `--allow` 指定的设备 |
 | `--allow <deviceID>` | 允许连接的设备，可重复 |
 | `--block <deviceID>` | 永远拒绝的设备，可重复 |
+| `--legacy-ports` | 绑定上游的固定媒体端口布局 |
+| `--timing-port` / `--udp-control-port` / `--data-port` / `--mirror-port` | 固定某一个媒体端口 |
 | `--audio-latency <seconds>` | 客户端排程所用的音频延迟，默认 0.25 秒 |
 | `--volume <0..1>` | 会话起始音量，默认满音量 |
 | `--audio-codec <alac\|aac-eld>` | 客户端发送的编码，默认 `aac-eld` |
