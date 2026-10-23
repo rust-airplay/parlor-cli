@@ -53,6 +53,8 @@ Options:
   --udp-control-port <p> UDP control port
   --data-port <port>     UDP data port
   --mirror-port <port>   TCP mirror listener port
+  --nohold               A new client takes over from the current one
+  --reset <seconds>      Close a session with no /feedback for n seconds (0 = never)
   --audio-latency <s>    Audio delay reported to the client (default: 0.25)
   --volume <0..1>        Volume a session starts at (default: 1.0)
   --audio-codec <codec>  alac or aac-eld, what the client's frames are
@@ -99,6 +101,10 @@ struct Options {
     block: Vec<String>,
     /// Whether to bind upstream's fixed media port layout.
     legacy_ports: bool,
+    /// Whether a new client takes over from the current one.
+    nohold: bool,
+    /// Seconds without feedback after which a session is closed; `0` never.
+    reset_after: f64,
     /// Media ports, with `0` meaning the system picks.
     timing_port: u16,
     udp_control_port: u16,
@@ -149,6 +155,8 @@ impl Default for Options {
             restrict: false,
             allow: Vec::new(),
             block: Vec::new(),
+            nohold: false,
+            reset_after: 0.0,
             legacy_ports: false,
             timing_port: 0,
             udp_control_port: 0,
@@ -315,6 +323,9 @@ async fn run() -> Result<(), String> {
         audio_latency: std::time::Duration::from_secs_f64(options.audio_latency.max(0.0)),
         initial_volume: rust_airplay::Volume::new(options.volume),
         features,
+        nohold: options.nohold,
+        feedback_timeout: (options.reset_after > 0.0)
+            .then(|| std::time::Duration::from_secs_f64(options.reset_after)),
         ports,
         client_policy: rust_airplay::server::ClientPolicy {
             restrict: options.restrict,
@@ -548,6 +559,13 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
                     .map_err(|_| "--max-fps: not a number".to_owned())?;
             }
             "--overscanned" => options.overscanned = true,
+            "--nohold" => options.nohold = true,
+            "--reset" => {
+                let value = next_value(&mut arguments, "--reset")?;
+                options.reset_after = value
+                    .parse::<f64>()
+                    .map_err(|_| format!("--reset: {value} is not a number of seconds"))?;
+            }
             "--legacy-ports" => options.legacy_ports = true,
             "--timing-port" => {
                 options.timing_port = next_value(&mut arguments, "--timing-port")?

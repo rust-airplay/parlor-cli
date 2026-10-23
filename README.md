@@ -58,6 +58,8 @@ client plays something.
 | `--block <deviceID>` | a device that never may; repeatable |
 | `--legacy-ports` | bind upstream's fixed media port layout |
 | `--timing-port` / `--udp-control-port` / `--data-port` / `--mirror-port` | pin one media port |
+| `--nohold` | a new client takes over from the current one |
+| `--reset <seconds>` | close a session with no `/feedback` for n seconds; `0` never |
 | `--audio-latency <seconds>` | the audio delay a client schedules against; 0.25 by default |
 | `--volume <0..1>` | the volume a session starts at; full by default |
 | `--audio-codec <alac\|aac-eld>` | the coding a client sends; `aac-eld` by default |
