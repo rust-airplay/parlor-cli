@@ -45,6 +45,9 @@ Options:
   --overscanned          Offer an overscanned display
   --hevc                 Allow HEVC and offer 4K (upstream -h265)
   --features <hex>       Feature bitmap to advertise (default: the library's)
+  --restrict             Admit only the devices named with --allow
+  --allow <deviceID>     A device that may connect (repeatable)
+  --block <deviceID>     A device that never may (repeatable)
   --audio-latency <s>    Audio delay reported to the client (default: 0.25)
   --volume <0..1>        Volume a session starts at (default: 1.0)
   --audio-codec <codec>  alac or aac-eld, what the client's frames are
@@ -83,6 +86,12 @@ struct Options {
     hevc: bool,
     /// Feature bitmap to advertise, when the caller wants to set it.
     features: Option<u64>,
+    /// Admit only the devices in `allow`.
+    restrict: bool,
+    /// Devices that may connect.
+    allow: Vec<String>,
+    /// Devices that never may.
+    block: Vec<String>,
     /// Display offered to a client in `/info`.
     width: u64,
     height: u64,
@@ -125,6 +134,9 @@ impl Default for Options {
             volume: 1.0,
             hevc: false,
             features: None,
+            restrict: false,
+            allow: Vec::new(),
+            block: Vec::new(),
             width: 1920,
             height: 1080,
             refresh_rate: 60.0,
@@ -285,6 +297,11 @@ async fn run() -> Result<(), String> {
         audio_latency: std::time::Duration::from_secs_f64(options.audio_latency.max(0.0)),
         initial_volume: rust_airplay::Volume::new(options.volume),
         features,
+        client_policy: rust_airplay::server::ClientPolicy {
+            restrict: options.restrict,
+            allow: options.allow,
+            block: options.block,
+        },
         display: rust_airplay::server::Display {
             width,
             height,
@@ -488,6 +505,9 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
                     .map_err(|_| "--max-fps: not a number".to_owned())?;
             }
             "--overscanned" => options.overscanned = true,
+            "--restrict" => options.restrict = true,
+            "--allow" => options.allow.push(next_value(&mut arguments, "--allow")?),
+            "--block" => options.block.push(next_value(&mut arguments, "--block")?),
             "--hevc" => options.hevc = true,
             "--features" => {
                 let value = next_value(&mut arguments, "--features")?;
