@@ -54,6 +54,8 @@ parlor --name "Living room" --port 7000 --render gst
 | `--reset <seconds>` | 无 `/feedback` 超过 n 秒关闭会话；`0` 表示从不 |
 | `--audio-latency <seconds>` | 客户端排程所用的音频延迟，默认 0.25 秒 |
 | `--volume <0..1>` | 会话起始音量，默认满音量 |
+| `--taper` | 使用锥形音量曲线，即上游 `-taper` |
+| `--db <low:high>` | 把音量滑块重映射到该分贝范围，默认 `-30:0` |
 | `--audio-codec <alac\|aac-eld>` | 客户端发送的编码，默认 `aac-eld` |
 | `--help` | 打印用法并退出 |
 

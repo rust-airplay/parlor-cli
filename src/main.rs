@@ -57,6 +57,8 @@ Options:
   --reset <seconds>      Close a session with no /feedback for n seconds (0 = never)
   --audio-latency <s>    Audio delay reported to the client (default: 0.25)
   --volume <0..1>        Volume a session starts at (default: 1.0)
+  --taper                Use the tapered volume profile (upstream -taper)
+  --db <low:high>        Rescale the volume slider onto this dB range (upstream -db)
   --audio-codec <codec>  alac or aac-eld, what the client's frames are
   --help                 Print this text
 
@@ -116,8 +118,13 @@ struct Options {
     refresh_rate: f64,
     max_fps: u64,
     overscanned: bool,
-    /// Volume a session starts at.
+    /// Volume a session starts at, as a slider position.
     volume: f64,
+    /// Whether to use the tapered volume profile.
+    taper: bool,
+    /// The dB range the slider is rescaled onto.
+    db_low: f64,
+    db_high: f64,
 }
 
 /// What plays the media a client sends.
@@ -150,6 +157,9 @@ impl Default for Options {
             pace_video: false,
             audio_latency: 0.25,
             volume: 1.0,
+            taper: false,
+            db_low: -30.0,
+            db_high: 0.0,
             hevc: false,
             features: None,
             restrict: false,
@@ -322,6 +332,11 @@ async fn run() -> Result<(), String> {
         pace_video: options.pace_video,
         audio_latency: std::time::Duration::from_secs_f64(options.audio_latency.max(0.0)),
         initial_volume: rust_airplay::Volume::new(options.volume),
+        volume_curve: rust_airplay::VolumeCurve {
+            taper: options.taper,
+            low_db: options.db_low,
+            high_db: options.db_high,
+        },
         features,
         nohold: options.nohold,
         feedback_timeout: (options.reset_after > 0.0)
@@ -604,6 +619,19 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
                 options.audio_latency = value
                     .parse::<f64>()
                     .map_err(|_| format!("--audio-latency: {value} is not a number"))?;
+            }
+            "--taper" => options.taper = true,
+            "--db" => {
+                let value = next_value(&mut arguments, "--db")?;
+                let (low, high) = value
+                    .split_once(':')
+                    .ok_or_else(|| format!("--db: {value} is not low:high"))?;
+                options.db_low = low
+                    .parse()
+                    .map_err(|_| format!("--db: {low} is not a number"))?;
+                options.db_high = high
+                    .parse()
+                    .map_err(|_| format!("--db: {high} is not a number"))?;
             }
             "--volume" => {
                 let value = next_value(&mut arguments, "--volume")?;

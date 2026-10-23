@@ -62,6 +62,8 @@ client plays something.
 | `--reset <seconds>` | close a session with no `/feedback` for n seconds; `0` never |
 | `--audio-latency <seconds>` | the audio delay a client schedules against; 0.25 by default |
 | `--volume <0..1>` | the volume a session starts at; full by default |
+| `--taper` | use the tapered volume profile, which is upstream's `-taper` |
+| `--db <low:high>` | rescale the volume slider onto a dB range; `-30:0` by default |
 | `--audio-codec <alac\|aac-eld>` | the coding a client sends; `aac-eld` by default |
 | `--help` | print the usage text and exit |
 
