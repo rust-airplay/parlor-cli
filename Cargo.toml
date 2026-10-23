@@ -1,0 +1,37 @@
+[package]
+name = "parlor-cli"
+description = "parlor: an AirPlay receiver on the command line"
+repository = "https://github.com/rust-airplay/parlor-cli"
+readme = "README.md"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "GPL-3.0-or-later"
+publish = false
+
+[[bin]]
+name = "parlor"
+path = "src/main.rs"
+
+[features]
+default = []
+# What a session plays through. Off by default so a machine with no GStreamer builds this
+# program unchanged: `--render null` reads the media and plays nothing, and needs no
+# backend at all.
+gst = ["dep:rust-airplay-gstream", "tokio/sync", "tokio/signal"]
+
+[dependencies]
+# The core library: protocol, decryption and framing.
+rust-airplay = { git = "https://github.com/rust-airplay/rust-airplay", branch = "main" }
+# The playback backend, only with `--features gst`.
+rust-airplay-gstream = { git = "https://github.com/rust-airplay/rust-airplay-gstream", branch = "main", optional = true }
+getrandom = "0.2"
+log = "0.4"
+tokio = { version = "1.53.2", default-features = false, features = ["rt-multi-thread", "macros"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[lints.clippy]
+all = "warn"
