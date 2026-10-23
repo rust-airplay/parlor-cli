@@ -47,6 +47,10 @@ client plays something.
 | `--video-decoder <name>` | the decoder that follows it |
 | `--warm-video` | start the video pipeline with the receiver |
 | `--pace-video` | hold video to its capture spacing, for even frames at some latency |
+| `--width <pixels>` / `--height <pixels>` | the display offered to a client; 1920x1080 by default |
+| `--refresh-rate <hz>` | the refresh rate offered; 60 by default |
+| `--max-fps <fps>` | the highest frame rate asked of the client; 30 by default |
+| `--overscanned` | offer an overscanned display |
 | `--audio-latency <seconds>` | the audio delay a client schedules against; 0.25 by default |
 | `--volume <0..1>` | the volume a session starts at; full by default |
 | `--audio-codec <alac\|aac-eld>` | the coding a client sends; `aac-eld` by default |

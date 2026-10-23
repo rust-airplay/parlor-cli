@@ -39,6 +39,10 @@ parlor --name "Living room" --port 7000 --render gst
 | `--video-decoder <name>` | 其后的解码器 |
 | `--warm-video` | 视频管线随接收端一起启动 |
 | `--pace-video` | 按采集间隔节流视频，画面更均匀但延迟更大 |
+| `--width <pixels>` / `--height <pixels>` | 提供给客户端的显示尺寸，默认 1920x1080 |
+| `--refresh-rate <hz>` | 提供的刷新率，默认 60 |
+| `--max-fps <fps>` | 要求客户端的最高帧率，默认 30 |
+| `--overscanned` | 提供 overscan 显示 |
 | `--audio-latency <seconds>` | 客户端排程所用的音频延迟，默认 0.25 秒 |
 | `--volume <0..1>` | 会话起始音量，默认满音量 |
 | `--audio-codec <alac\|aac-eld>` | 客户端发送的编码，默认 `aac-eld` |

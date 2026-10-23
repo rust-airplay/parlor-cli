@@ -38,6 +38,11 @@ Options:
   --warm-video           Start the video pipeline with the receiver
   --pace-video           Hold video to its capture spacing (smoother, later)
 
+  --width <pixels>       Display width offered to the client (default: 1920)
+  --height <pixels>      Display height offered to the client (default: 1080)
+  --refresh-rate <hz>    Display refresh rate (default: 60)
+  --max-fps <fps>        Highest frame rate asked of the client (default: 30)
+  --overscanned          Offer an overscanned display
   --audio-latency <s>    Audio delay reported to the client (default: 0.25)
   --volume <0..1>        Volume a session starts at (default: 1.0)
   --audio-codec <codec>  alac or aac-eld, what the client's frames are
@@ -72,6 +77,12 @@ struct Options {
     pace_video: bool,
     /// Audio delay reported to the client, in seconds.
     audio_latency: f64,
+    /// Display offered to a client in `/info`.
+    width: u64,
+    height: u64,
+    refresh_rate: f64,
+    max_fps: u64,
+    overscanned: bool,
     /// Volume a session starts at.
     volume: f64,
 }
@@ -106,6 +117,11 @@ impl Default for Options {
             pace_video: false,
             audio_latency: 0.25,
             volume: 1.0,
+            width: 1920,
+            height: 1080,
+            refresh_rate: 60.0,
+            max_fps: 30,
+            overscanned: false,
 
             // AirPlay 2 clients send AAC-ELD, which is what an iPhone or iPad paired with
             // this receiver sends.
@@ -247,6 +263,13 @@ async fn run() -> Result<(), String> {
         pace_video: options.pace_video,
         audio_latency: std::time::Duration::from_secs_f64(options.audio_latency.max(0.0)),
         initial_volume: rust_airplay::Volume::new(options.volume),
+        display: rust_airplay::server::Display {
+            width: options.width,
+            height: options.height,
+            refresh_rate: options.refresh_rate,
+            max_fps: options.max_fps,
+            overscanned: options.overscanned,
+        },
     };
     rust_airplay::run(config)
         .await
@@ -422,6 +445,27 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
             }
             "--warm-video" => options.warm_video = true,
             "--pace-video" => options.pace_video = true,
+            "--width" => {
+                options.width = next_value(&mut arguments, "--width")?
+                    .parse()
+                    .map_err(|_| "--width: not a number".to_owned())?;
+            }
+            "--height" => {
+                options.height = next_value(&mut arguments, "--height")?
+                    .parse()
+                    .map_err(|_| "--height: not a number".to_owned())?;
+            }
+            "--refresh-rate" => {
+                options.refresh_rate = next_value(&mut arguments, "--refresh-rate")?
+                    .parse()
+                    .map_err(|_| "--refresh-rate: not a number".to_owned())?;
+            }
+            "--max-fps" => {
+                options.max_fps = next_value(&mut arguments, "--max-fps")?
+                    .parse()
+                    .map_err(|_| "--max-fps: not a number".to_owned())?;
+            }
+            "--overscanned" => options.overscanned = true,
             "--audio-latency" => {
                 let value = next_value(&mut arguments, "--audio-latency")?;
                 options.audio_latency = value
