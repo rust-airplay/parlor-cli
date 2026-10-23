@@ -65,6 +65,9 @@ client plays something.
 | `--taper` | use the tapered volume profile, which is upstream's `-taper` |
 | `--db <low:high>` | rescale the volume slider onto a dB range; `-30:0` by default |
 | `--fps-data` | log the client's own streaming reports, which is upstream's `-FPSdata` |
+| `--cover-art [file]` | report cover art, or write it to a file; upstream's `-ca` |
+| `--metadata <file>` | write now-playing text to a file; upstream's `-md` |
+| `--dacp <file>` | export the remote-control identifiers; upstream's `-dacp` |
 | `--audio-codec <alac\|aac-eld>` | the coding a client sends; `aac-eld` by default |
 | `--help` | print the usage text and exit |
 

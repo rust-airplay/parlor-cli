@@ -60,6 +60,9 @@ Options:
   --taper                Use the tapered volume profile (upstream -taper)
   --db <low:high>        Rescale the volume slider onto this dB range (upstream -db)
   --fps-data             Log the client's streaming reports (upstream -FPSdata)
+  --cover-art [<file>]   Show the size of cover art, or write it to a file (upstream -ca)
+  --metadata <file>      Write the now-playing text to a file (upstream -md)
+  --dacp <file>          Export the remote-control identifiers to a file (upstream -dacp)
   --audio-codec <codec>  alac or aac-eld, what the client's frames are
   --help                 Print this text
 
@@ -128,6 +131,12 @@ struct Options {
     db_high: f64,
     /// Whether to log the client's streaming reports.
     fps_data: bool,
+    /// File to write cover art to, when the user named one.
+    cover_art: Option<std::path::PathBuf>,
+    /// File to write now-playing metadata to.
+    metadata: Option<std::path::PathBuf>,
+    /// File to export the remote-control identifiers to.
+    dacp: Option<std::path::PathBuf>,
 }
 
 /// What plays the media a client sends.
@@ -164,6 +173,9 @@ impl Default for Options {
             db_low: -30.0,
             db_high: 0.0,
             fps_data: false,
+            cover_art: None,
+            metadata: None,
+            dacp: None,
             hevc: false,
             features: None,
             restrict: false,
@@ -319,6 +331,51 @@ async fn run() -> Result<(), String> {
     };
 
     let ports = media_ports(&options);
+    let on_artwork = options.cover_art.as_ref().map(|path| {
+        let path = path.clone();
+        std::sync::Arc::new(move |mime: &str, bytes: &[u8]| {
+            if let Err(error) = std::fs::write(&path, bytes) {
+                eprintln!("parlor: cannot write {}: {error}", path.display());
+            } else {
+                eprintln!(
+                    "parlor: {mime} cover art, {} bytes -> {}",
+                    bytes.len(),
+                    path.display()
+                );
+            }
+        }) as rust_airplay::ArtworkCallback
+    });
+    let on_metadata = options.metadata.as_ref().map(|path| {
+        let path = path.clone();
+        std::sync::Arc::new(move |bytes: &[u8]| {
+            let text = rust_airplay::media::dmap::text(bytes);
+            if let Err(error) = std::fs::write(&path, &text) {
+                eprintln!("parlor: cannot write {}: {error}", path.display());
+            } else {
+                eprintln!(
+                    "parlor: metadata -> {}
+{text}",
+                    path.display()
+                );
+            }
+        }) as rust_airplay::MetadataCallback
+    });
+    let on_remote_control = options.dacp.as_ref().map(|path| {
+        let path = path.clone();
+        std::sync::Arc::new(move |dacp: &str, remote: &str| {
+            if let Err(error) = std::fs::write(
+                &path,
+                format!(
+                    "{dacp}
+{remote}
+"
+                ),
+            ) {
+                eprintln!("parlor: cannot write {}: {error}", path.display());
+            }
+        }) as rust_airplay::RemoteControlCallback
+    });
+
     let config = rust_airplay::Config {
         name: options.name,
         port: options.port,
@@ -337,6 +394,9 @@ async fn run() -> Result<(), String> {
         audio_latency: std::time::Duration::from_secs_f64(options.audio_latency.max(0.0)),
         initial_volume: rust_airplay::Volume::new(options.volume),
         log_streaming_reports: options.fps_data,
+        on_artwork,
+        on_metadata,
+        on_remote_control,
         volume_curve: rust_airplay::VolumeCurve {
             taper: options.taper,
             low_db: options.db_low,
@@ -627,6 +687,28 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
             }
             "--taper" => options.taper = true,
             "--fps-data" => options.fps_data = true,
+            "--cover-art" => {
+                // The path is optional: upstream's `-ca` without one shows the art, which a
+                // command-line receiver can only report.
+                options.cover_art = arguments.peek().and_then(|next| {
+                    (!next.starts_with('-')).then(|| std::path::PathBuf::from(next.clone()))
+                });
+                if options.cover_art.is_some() {
+                    let _ = arguments.next();
+                }
+            }
+            "--metadata" => {
+                options.metadata = Some(std::path::PathBuf::from(next_value(
+                    &mut arguments,
+                    "--metadata",
+                )?));
+            }
+            "--dacp" => {
+                options.dacp = Some(std::path::PathBuf::from(next_value(
+                    &mut arguments,
+                    "--dacp",
+                )?));
+            }
             "--db" => {
                 let value = next_value(&mut arguments, "--db")?;
                 let (low, high) = value

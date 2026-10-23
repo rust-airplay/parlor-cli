@@ -57,6 +57,9 @@ parlor --name "Living room" --port 7000 --render gst
 | `--taper` | 使用锥形音量曲线，即上游 `-taper` |
 | `--db <low:high>` | 把音量滑块重映射到该分贝范围，默认 `-30:0` |
 | `--fps-data` | 记录客户端自己的流报告，即上游 `-FPSdata` |
+| `--cover-art [file]` | 报告封面图信息，或写入文件；上游 `-ca` |
+| `--metadata <file>` | 把当前播放信息写入文件；上游 `-md` |
+| `--dacp <file>` | 导出遥控标识；上游 `-dacp` |
 | `--audio-codec <alac\|aac-eld>` | 客户端发送的编码，默认 `aac-eld` |
 | `--help` | 打印用法并退出 |
 
