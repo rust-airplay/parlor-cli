@@ -852,7 +852,7 @@ dependencies = [
 [[package]]
 name = "rust-airplay"
 version = "0.1.0"
-source = "git+https://github.com/rust-airplay/rust-airplay?branch=main#5900309ec6cacf623bd7e36db1280ac421fdb72e"
+source = "git+https://github.com/rust-airplay/rust-airplay?branch=main#c85df4ef265a32814affcc9cbbb94d2acb7a406a"
 dependencies = [
  "aes",
  "aes-gcm",

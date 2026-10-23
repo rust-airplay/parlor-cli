@@ -43,6 +43,8 @@ parlor --name "Living room" --port 7000 --render gst
 | `--refresh-rate <hz>` | 提供的刷新率，默认 60 |
 | `--max-fps <fps>` | 要求客户端的最高帧率，默认 30 |
 | `--overscanned` | 提供 overscan 显示 |
+| `--hevc` | 允许 HEVC 并提供 4K，即上游 `-h265` |
+| `--features <hex>` | 要广播的 feature 位图 |
 | `--audio-latency <seconds>` | 客户端排程所用的音频延迟，默认 0.25 秒 |
 | `--volume <0..1>` | 会话起始音量，默认满音量 |
 | `--audio-codec <alac\|aac-eld>` | 客户端发送的编码，默认 `aac-eld` |

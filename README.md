@@ -51,6 +51,8 @@ client plays something.
 | `--refresh-rate <hz>` | the refresh rate offered; 60 by default |
 | `--max-fps <fps>` | the highest frame rate asked of the client; 30 by default |
 | `--overscanned` | offer an overscanned display |
+| `--hevc` | allow HEVC and offer 4K, which is upstream's `-h265` |
+| `--features <hex>` | the feature bitmap to advertise |
 | `--audio-latency <seconds>` | the audio delay a client schedules against; 0.25 by default |
 | `--volume <0..1>` | the volume a session starts at; full by default |
 | `--audio-codec <alac\|aac-eld>` | the coding a client sends; `aac-eld` by default |

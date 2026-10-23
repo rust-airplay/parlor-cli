@@ -43,6 +43,8 @@ Options:
   --refresh-rate <hz>    Display refresh rate (default: 60)
   --max-fps <fps>        Highest frame rate asked of the client (default: 30)
   --overscanned          Offer an overscanned display
+  --hevc                 Allow HEVC and offer 4K (upstream -h265)
+  --features <hex>       Feature bitmap to advertise (default: the library's)
   --audio-latency <s>    Audio delay reported to the client (default: 0.25)
   --volume <0..1>        Volume a session starts at (default: 1.0)
   --audio-codec <codec>  alac or aac-eld, what the client's frames are
@@ -77,6 +79,10 @@ struct Options {
     pace_video: bool,
     /// Audio delay reported to the client, in seconds.
     audio_latency: f64,
+    /// Whether HEVC is allowed, which is feature bit 42.
+    hevc: bool,
+    /// Feature bitmap to advertise, when the caller wants to set it.
+    features: Option<u64>,
     /// Display offered to a client in `/info`.
     width: u64,
     height: u64,
@@ -117,6 +123,8 @@ impl Default for Options {
             pace_video: false,
             audio_latency: 0.25,
             volume: 1.0,
+            hevc: false,
+            features: None,
             width: 1920,
             height: 1080,
             refresh_rate: 60.0,
@@ -246,6 +254,19 @@ async fn run() -> Result<(), String> {
         })
     };
 
+    // `-h265` is one bit and a bigger default display; the caller decides both.
+    let hevc_bit = 1u64 << 42;
+    let features = options.features.or_else(|| {
+        options
+            .hevc
+            .then_some(rust_airplay::server::DEFAULT_FEATURES | hevc_bit)
+    });
+    let (width, height) = if options.hevc && options.width == 1920 && options.height == 1080 {
+        (3840, 2160)
+    } else {
+        (options.width, options.height)
+    };
+
     let config = rust_airplay::Config {
         name: options.name,
         port: options.port,
@@ -263,9 +284,10 @@ async fn run() -> Result<(), String> {
         pace_video: options.pace_video,
         audio_latency: std::time::Duration::from_secs_f64(options.audio_latency.max(0.0)),
         initial_volume: rust_airplay::Volume::new(options.volume),
+        features,
         display: rust_airplay::server::Display {
-            width: options.width,
-            height: options.height,
+            width,
+            height,
             refresh_rate: options.refresh_rate,
             max_fps: options.max_fps,
             overscanned: options.overscanned,
@@ -466,6 +488,15 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
                     .map_err(|_| "--max-fps: not a number".to_owned())?;
             }
             "--overscanned" => options.overscanned = true,
+            "--hevc" => options.hevc = true,
+            "--features" => {
+                let value = next_value(&mut arguments, "--features")?;
+                let digits = value.trim_start_matches("0x");
+                options.features = Some(
+                    u64::from_str_radix(digits, 16)
+                        .map_err(|_| format!("--features: {value} is not hex"))?,
+                );
+            }
             "--audio-latency" => {
                 let value = next_value(&mut arguments, "--audio-latency")?;
                 options.audio_latency = value
