@@ -30,7 +30,7 @@ reads a session without playing it.
 The program prints a short banner and then waits:
 
 ```
-parlor 0.1.0 - an AirPlay receiver
+parlor 0.2.0 - an AirPlay receiver
 
   Name      Living Room
   Port      7000

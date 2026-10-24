@@ -23,7 +23,7 @@ parlor -n "Living room" -pin 1234
 程序打印一段简短标题后等待：
 
 ```
-parlor 0.1.0 - an AirPlay receiver
+parlor 0.2.0 - an AirPlay receiver
 
   Name      Living Room
   Port      7000
