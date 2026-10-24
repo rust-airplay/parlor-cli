@@ -27,6 +27,17 @@ parlor -n "Living room" -pin 1234
 A build with the `gst` feature plays through GStreamer by default, which is what a UxPlay
 command expects; `--render null` is there for a session that should be read without sound.
 
+```
+parlor 0.1.0 - an AirPlay receiver
+
+  Name      Living Room
+  Port      7000
+  Playback  GStreamer
+  Clients   0 remembered
+
+Waiting for a client. Press Ctrl+C to stop.
+```
+
 On an iPhone or iPad, open the AirPlay menu, pick the receiver and type the PIN the program
 prints. Screen mirroring starts as soon as the client connects; audio follows whenever the
 client plays something.

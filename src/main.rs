@@ -334,14 +334,6 @@ async fn run() -> Result<(), String> {
         }
         None => load_or_create_seed(options.key_file.as_deref())?,
     };
-    // The renderer is chosen before anything is advertised, because a backend this build
-    // or this machine cannot provide is something to say now rather than when a client is
-    // already waiting for sound.
-    let renderer = renderer(options.render, &options)?;
-    if options.render == RenderBackend::Null {
-        log::info!("render    null   media is read and played nowhere");
-    }
-
     // The registry lives here, not in the library: a receiver decides for itself how it
     // remembers clients (`docs/ARCHITECTURE.md`). The library is handed the
     // set, and a callback that writes a newly verified key.
@@ -381,7 +373,7 @@ async fn run() -> Result<(), String> {
         let drawn = hex(&bytes);
         // The drawn password is for the person at the keyboard, so it is printed whatever
         // the log level is.
-        println!("*** password {drawn} ***");
+        println!("Password for clients: {drawn}");
         password = Some(drawn);
     }
 
@@ -435,16 +427,49 @@ async fn run() -> Result<(), String> {
         println!("*** enter PIN {pin} on the client ***");
     });
 
-    // One line whatever the log level is, so a run with no log still says it started and
-    // what it is playing through.
-    println!(
-        "parlor: {} is running ({} renderer); -v for detail",
-        options.name,
-        match options.render {
-            RenderBackend::Null => "null",
-            RenderBackend::Gst => "gstreamer",
-        }
-    );
+    // A short banner, the way a receiver is usually introduced: what it is called, where it
+    // listens, what plays, and what is already known. Nothing here needs a log level to read;
+    // `-q` suppresses it because a quiet run should be quiet.
+    if options.log_level >= log::LevelFilter::Warn {
+        let remembered = clients.lock().map(|clients| clients.len()).unwrap_or(0);
+        println!(
+            "parlor {} - an AirPlay receiver
+",
+            env!("CARGO_PKG_VERSION")
+        );
+        println!("  Name      {}", options.name);
+        println!(
+            "  Port      {}",
+            if control_port == 0 {
+                "chosen by the system".to_owned()
+            } else {
+                control_port.to_string()
+            }
+        );
+        println!(
+            "  Playback  {}",
+            match options.render {
+                RenderBackend::Null => "none (media is read and played nowhere)",
+                RenderBackend::Gst => "GStreamer",
+            }
+        );
+        println!(
+            "  Clients   {remembered} remembered
+"
+        );
+        println!(
+            "Waiting for a client. Press Ctrl+C to stop.
+"
+        );
+    }
+
+    // The renderer is chosen before anything is advertised, because a backend this build
+    // or this machine cannot provide is something to say now rather than when a client is
+    // already waiting for sound.
+    let renderer = renderer(options.render, &options)?;
+    if options.render == RenderBackend::Null {
+        log::info!("render    null   media is read and played nowhere");
+    }
 
     let config = rust_airplay::Config {
         on_pin: Some(on_pin),

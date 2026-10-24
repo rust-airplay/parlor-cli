@@ -20,6 +20,17 @@ parlor -n "Living room" -pin 1234
 
 带 `gst` feature 的构建默认通过 GStreamer 播放，这正是 UxPlay 命令所期望的；`--render null` 留给"只读会话不放声音"的场景。
 
+```
+parlor 0.1.0 - an AirPlay receiver
+
+  Name      Living Room
+  Port      7000
+  Playback  GStreamer
+  Clients   0 remembered
+
+Waiting for a client. Press Ctrl+C to stop.
+```
+
 在 iPhone 或 iPad 上打开 AirPlay 菜单，选中接收端，输入程序打印的 PIN。客户端一连上就开始镜像；客户端开始播放时就有声音。
 
 ## 参数
