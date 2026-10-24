@@ -705,16 +705,19 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
             "-h265" => options.hevc = true,
             "-pin" => {
                 options.pin = match optional_value(&mut arguments) {
-                    Some(digits) => PinMode::Fixed(
-                        digits
+                    Some(digits) => {
+                        let digits = digits
                             .parse()
-                            .map_err(|_| format!("-pin: {digits} is not a PIN"))?,
-                    ),
+                            .map_err(|_| format!("-pin: {digits} is not a PIN"))?;
+                        PinMode::Fixed(pin_option("-pin", digits)?)
+                    }
                     None => PinMode::OneTime,
                 };
             }
             "-pw" => match optional_value(&mut arguments) {
-                Some(password) => options.password = Some(password),
+                Some(password) => {
+                    options.password = Some(password_option("-pw", password)?);
+                }
                 // Upstream draws a password at each connection; this receiver prints one
                 // and keeps it for the run, which is the same promise to the user.
                 None => options.random_password = true,
@@ -744,22 +747,25 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
                     ));
                 }
                 Some(base) => {
-                    options.base_port = Some(
-                        base.parse()
-                            .map_err(|_| format!("-p: {base} is not a port"))?,
-                    );
+                    let base: u16 = base
+                        .parse()
+                        .map_err(|_| format!("-p: {base} is not a port"))?;
+                    // The layout is `n..n+2`, so the last port has to stay a port.
+                    options.base_port = Some(within("-p", base, 1, 65_533)?);
                 }
                 None => options.legacy_ports = true,
             },
             "-al" => {
-                options.audio_latency = next_value(&mut arguments, "-al")?
+                let value = next_value(&mut arguments, "-al")?
                     .parse()
                     .map_err(|_| "-al: not a number of seconds".to_owned())?;
+                options.audio_latency = within("-al", value, 0.0, 10.0)?;
             }
             "-vol" => {
-                options.volume = next_value(&mut arguments, "-vol")?
+                let value = next_value(&mut arguments, "-vol")?
                     .parse()
                     .map_err(|_| "-vol: not a number".to_owned())?;
+                options.volume = within("-vol", value, 0.0, 1.0)?;
             }
             "-db" => {
                 let value = next_value(&mut arguments, "-db")?;
@@ -772,6 +778,14 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
                 options.db_high = high
                     .parse()
                     .map_err(|_| format!("-db: {high} is not a number"))?;
+                if options.db_low >= options.db_high
+                    || !options.db_low.is_finite()
+                    || !options.db_high.is_finite()
+                {
+                    return Err(format!(
+                        "-db: the range must be low:high with low below high, got {value}"
+                    ));
+                }
             }
             "-taper" => options.taper = true,
             "-s" => {
@@ -783,9 +797,10 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
                 }
             }
             "-fps" => {
-                options.max_fps = next_value(&mut arguments, "-fps")?
+                let value = next_value(&mut arguments, "-fps")?
                     .parse()
                     .map_err(|_| "-fps: not a number".to_owned())?;
+                options.max_fps = within("-fps", value, 1, 240)?;
             }
             "-o" => options.overscanned = true,
             "-as" => options.audio_sink = Some(next_value(&mut arguments, "-as")?),
@@ -810,9 +825,13 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
                 });
             }
             "-reset" => {
-                options.reset_after = next_value(&mut arguments, "-reset")?
+                let value: f64 = next_value(&mut arguments, "-reset")?
                     .parse()
                     .map_err(|_| "-reset: not a number of seconds".to_owned())?;
+                if !value.is_finite() || value < 0.0 {
+                    return Err(format!("-reset: {value} is not a number of seconds"));
+                }
+                options.reset_after = value;
             }
             "-nohold" => options.nohold = true,
             "-restrict" => options.restrict = true,
@@ -866,11 +885,10 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
                 options.log_level = parse_level(&level)?;
             }
             "--base-port" => {
-                options.base_port = Some(
-                    next_value(&mut arguments, "--base-port")?
-                        .parse()
-                        .map_err(|_| "--base-port: not a port".to_owned())?,
-                );
+                let value = next_value(&mut arguments, "--base-port")?
+                    .parse()
+                    .map_err(|_| "--base-port: not a port".to_owned())?;
+                options.base_port = Some(within("--base-port", value, 1, 65_533)?);
             }
 
             "--name" => options.name = next_value(&mut arguments, "--name")?,
@@ -888,12 +906,15 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
                         let digits: u16 = next_value(&mut arguments, "--pin")?
                             .parse()
                             .map_err(|error| format!("--pin: {error}"))?;
-                        PinMode::Fixed(digits)
+                        PinMode::Fixed(pin_option("--pin", digits)?)
                     }
                     _ => PinMode::OneTime,
                 };
             }
-            "--password" => options.password = Some(next_value(&mut arguments, "--password")?),
+            "--password" => {
+                let value = next_value(&mut arguments, "--password")?;
+                options.password = Some(password_option("--password", value)?);
+            }
             "--device-id" => options.device_id = Some(next_value(&mut arguments, "--device-id")?),
             "--seed" => options.seed = Some(parse_seed(&next_value(&mut arguments, "--seed")?)?),
             "--log" => options.log = Some(next_value(&mut arguments, "--log")?),
@@ -922,32 +943,43 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
             "--warm-video" => options.warm_video = true,
             "--pace-video" => options.pace_video = true,
             "--width" => {
-                options.width = next_value(&mut arguments, "--width")?
+                let value = next_value(&mut arguments, "--width")?
                     .parse()
                     .map_err(|_| "--width: not a number".to_owned())?;
+                options.width = within("--width", value, 1, 16_384)?;
             }
             "--height" => {
-                options.height = next_value(&mut arguments, "--height")?
+                let value = next_value(&mut arguments, "--height")?
                     .parse()
                     .map_err(|_| "--height: not a number".to_owned())?;
+                options.height = within("--height", value, 1, 16_384)?;
             }
             "--refresh-rate" => {
-                options.refresh_rate = next_value(&mut arguments, "--refresh-rate")?
+                let value: f64 = next_value(&mut arguments, "--refresh-rate")?
                     .parse()
                     .map_err(|_| "--refresh-rate: not a number".to_owned())?;
+                if !value.is_finite() || value <= 0.0 {
+                    return Err(format!("--refresh-rate: {value} is not a refresh rate"));
+                }
+                options.refresh_rate = value;
             }
             "--max-fps" => {
-                options.max_fps = next_value(&mut arguments, "--max-fps")?
+                let value = next_value(&mut arguments, "--max-fps")?
                     .parse()
                     .map_err(|_| "--max-fps: not a number".to_owned())?;
+                options.max_fps = within("--max-fps", value, 1, 240)?;
             }
             "--overscanned" => options.overscanned = true,
             "--nohold" => options.nohold = true,
             "--reset" => {
                 let value = next_value(&mut arguments, "--reset")?;
-                options.reset_after = value
-                    .parse::<f64>()
+                let seconds: f64 = value
+                    .parse()
                     .map_err(|_| format!("--reset: {value} is not a number of seconds"))?;
+                if !seconds.is_finite() || seconds < 0.0 {
+                    return Err(format!("--reset: {value} is not a number of seconds"));
+                }
+                options.reset_after = seconds;
             }
             "--legacy-ports" => options.legacy_ports = true,
             "--timing-port" => {
@@ -984,9 +1016,10 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
             }
             "--audio-latency" => {
                 let value = next_value(&mut arguments, "--audio-latency")?;
-                options.audio_latency = value
-                    .parse::<f64>()
+                let seconds: f64 = value
+                    .parse()
                     .map_err(|_| format!("--audio-latency: {value} is not a number"))?;
+                options.audio_latency = within("--audio-latency", seconds, 0.0, 10.0)?;
             }
             "--taper" => options.taper = true,
             "--fps-data" => options.fps_data = true,
@@ -1023,12 +1056,21 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
                 options.db_high = high
                     .parse()
                     .map_err(|_| format!("--db: {high} is not a number"))?;
+                if options.db_low >= options.db_high
+                    || !options.db_low.is_finite()
+                    || !options.db_high.is_finite()
+                {
+                    return Err(format!(
+                        "--db: the range must be low:high with low below high, got {value}"
+                    ));
+                }
             }
             "--volume" => {
                 let value = next_value(&mut arguments, "--volume")?;
-                options.volume = value
-                    .parse::<f64>()
+                let level: f64 = value
+                    .parse()
                     .map_err(|_| format!("--volume: {value} is not a number"))?;
+                options.volume = within("--volume", level, 0.0, 1.0)?;
             }
 
             "--audio-codec" => {
@@ -1071,6 +1113,40 @@ fn optional_value(
     }
 }
 
+/// Checks a numeric option is inside the range the protocol or the backend allows.
+fn within<T: PartialOrd + Copy + std::fmt::Display>(
+    option: &str,
+    value: T,
+    low: T,
+    high: T,
+) -> Result<T, String> {
+    if value < low || value > high {
+        return Err(format!("{option}: {value} is outside {low}..={high}"));
+    }
+    Ok(value)
+}
+
+/// Checks a PIN is one a person can type: four digits, 0001 to 9999.
+///
+/// Upstream refuses anything outside that range when it parses the option, and a fixed PIN
+/// outside it is a receiver no client can pair with.
+fn pin_option(option: &str, digits: u16) -> Result<u16, String> {
+    if !(1..=9999).contains(&digits) {
+        return Err(format!("{option}: {digits} is not a PIN (0001 to 9999)"));
+    }
+    Ok(digits)
+}
+
+/// Checks a password against the minimum length upstream enforces.
+fn password_option(option: &str, value: String) -> Result<String, String> {
+    if value.chars().count() < 4 {
+        return Err(format!(
+            "{option}: a password needs at least four characters"
+        ));
+    }
+    Ok(value)
+}
+
 /// Reads a log level by name.
 fn parse_level(name: &str) -> Result<log::LevelFilter, String> {
     Ok(match name {
@@ -1108,6 +1184,9 @@ fn parse_display(text: &str) -> Result<(u64, u64, Option<f64>), String> {
     let height: u64 = height
         .parse()
         .map_err(|_| format!("-s: {height} is not a height"))?;
+    if width == 0 || height == 0 || rate.is_some_and(|rate| !rate.is_finite() || rate <= 0.0) {
+        return Err(format!("-s: {text} is not a usable display"));
+    }
     Ok((width, height, rate))
 }
 
@@ -1207,6 +1286,65 @@ mod tests {
         assert!(error.contains("not supported"), "{error}");
         let error = parse(&["-mp4", "out.mp4"]).expect_err("refused");
         assert!(error.contains("not supported"), "{error}");
+    }
+
+    #[test]
+    fn options_outside_their_range_are_refused() {
+        // Each of these was accepted before the audit and either clamped silently or
+        // produced a value the protocol cannot use: a PIN of zero, a password shorter than
+        // upstream's minimum, a volume above unity, a negative timeout, a display with no
+        // pixels, a port layout that runs past 65535.
+        for arguments in [
+            &["-pin", "0"][..],
+            &["-pin", "10000"],
+            &["-pw", "abc"],
+            &["-vol", "1.5"],
+            &["-al", "11"],
+            &["-db", "0:-30"],
+            &["-s", "0x1080"],
+            &["-s", "1920x0"],
+            &["-fps", "0"],
+            &["-reset", "-1"],
+            &["-p", "70000"],
+            &["--volume", "-0.1"],
+            &["--audio-latency", "10.5"],
+            &["--db", "-30:-40"],
+            &["--base-port", "65535"],
+            &["--password", "abc"],
+            &["--pin", "0"],
+        ] {
+            assert!(parse(arguments).is_err(), "{arguments:?} was accepted");
+        }
+    }
+
+    #[test]
+    fn values_inside_their_range_still_parse() {
+        // The boundaries are where a valid value stops being valid, not one short of it.
+        let options = parse(&[
+            "-pin",
+            "9999",
+            "-pw",
+            "abcd",
+            "-vol",
+            "1",
+            "-al",
+            "10",
+            "-db",
+            "-30:0",
+            "-s",
+            "1920x1080@60",
+            "-fps",
+            "240",
+            "-reset",
+            "0",
+            "-p",
+            "65533",
+        ])
+        .expect("parsed");
+        assert_eq!(options.pin, PinMode::Fixed(9999));
+        assert_eq!(options.volume, 1.0);
+        assert_eq!(options.audio_latency, 10.0);
+        assert_eq!(options.base_port, Some(65_533));
     }
 
     #[test]
