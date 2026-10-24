@@ -737,7 +737,7 @@ dependencies = [
 
 [[package]]
 name = "parlor-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "getrandom",
  "log",
@@ -851,8 +851,8 @@ dependencies = [
 
 [[package]]
 name = "rust-airplay"
-version = "0.1.0"
-source = "git+https://github.com/rust-airplay/rust-airplay?branch=main#1871a37fc498a1d47f1a4666199b70bb391953ec"
+version = "0.2.0"
+source = "git+https://github.com/rust-airplay/rust-airplay?branch=main#e3ba858c9532b6e04637e0459488eb513ac3218c"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -875,8 +875,8 @@ dependencies = [
 
 [[package]]
 name = "rust-airplay-gstream"
-version = "0.1.0"
-source = "git+https://github.com/rust-airplay/rust-airplay-gstream?branch=main#cd4bcdabae2217d11522c587d92edcb506a1732b"
+version = "0.2.0"
+source = "git+https://github.com/rust-airplay/rust-airplay-gstream?branch=main#0d24d57c2158e8a6cad405277b566c4f32819bce"
 dependencies = [
  "gstreamer",
  "gstreamer-app",
