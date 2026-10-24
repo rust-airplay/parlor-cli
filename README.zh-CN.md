@@ -116,8 +116,7 @@ cargo clippy --all-targets --features gst -- -D warnings
 
 ## 发布
 
-`Release` 工作流手动触发，有三个输入：形如 `v0.2.0` 的 tag、发布说明（换行用 `
-`）、以及是否创建草稿。它使用 GStreamer 后端为 Linux 与 Windows 构建 `parlor`，把二进制、两个 README 与许可证打包，并创建 GitHub release。Windows 构建使用与 MSYS2 GStreamer 库匹配的 GNU 工具链；两个压缩包都要求运行机器安装 GStreamer 1.0 及基础插件。
+`Release` 工作流手动触发，有三个输入：形如 `v0.2.0` 的 tag、发布说明（留空则使用 `RELEASE_NOTES.md`，否则换行用 `\n`）、以及是否创建草稿。它使用 GStreamer 后端为 Linux 与 Windows 构建 `parlor`，把二进制、两个 README 与许可证打包，并创建 GitHub release。Windows 构建使用与 MSYS2 GStreamer 库匹配的 GNU 工具链；两个压缩包都要求运行机器安装 GStreamer 1.0 及基础插件。
 
 ## 文档
 

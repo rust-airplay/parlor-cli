@@ -10,8 +10,8 @@ on:
         required: true
         type: string
       changelog:
-        description: Release notes; use \n for line breaks
-        required: true
+        description: Release notes; use \n for line breaks, or leave empty to use RELEASE_NOTES.md
+        required: false
         type: string
       draft:
         description: Create the release as a draft
@@ -161,7 +161,11 @@ jobs:
         env:
           CHANGELOG: ${{ inputs.changelog }}
         run: |
-          printf '%b\n' "$CHANGELOG" > notes.md
+          if [ -n "$CHANGELOG" ]; then
+            printf '%b\n' "$CHANGELOG" > notes.md
+          else
+            cp RELEASE_NOTES.md notes.md
+          fi
           printf '\n### Runtime\n\nThis build uses the GStreamer backend. The machine that runs it needs GStreamer 1.0 and its base plugins installed.\n' >> notes.md
 
       - name: Create the release

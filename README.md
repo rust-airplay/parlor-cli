@@ -145,8 +145,8 @@ refusal of an invalid one. They need no GStreamer.
 ## Releasing
 
 The `Release` workflow is started by hand with three inputs: a tag such as `v0.2.0`, the
-release notes (use `
-` for a line break), and whether the release is a draft. It builds
+release notes (leave empty to use `RELEASE_NOTES.md`; otherwise use `\n` for a line break),
+and whether the release is a draft. It builds
 `parlor` for Linux and Windows with the GStreamer backend, packs the binary with both
 READMEs and the licence, and creates a GitHub release. The Windows build uses the GNU
 toolchain that matches the MSYS2 GStreamer libraries; both archives need GStreamer 1.0 and
