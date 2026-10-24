@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag, for example v0.2.0
+        description: Release tag, for example v0.2.0; a missing v is added
         required: true
         type: string
       changelog:
@@ -47,6 +47,11 @@ jobs:
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
+
+      - name: Normalise the tag
+        run: |
+          tag="${{ inputs.tag }}"
+          echo "TAG=v${tag#[vV]}" >> "$GITHUB_ENV"
 
       - name: Install GStreamer (Linux)
         if: runner.os == 'Linux'
@@ -123,7 +128,7 @@ jobs:
       - name: Package the release
         run: |
           set -euo pipefail
-          tag="${{ inputs.tag }}"
+          tag="${TAG}"
           mkdir -p dist
           cp README.md LICENSE dist/
           if [ "${{ runner.os }}" = "Linux" ]; then
@@ -132,12 +137,6 @@ jobs:
           else
             cp target/release/parlor.exe dist/
             files=(parlor.exe README.md LICENSE)
-            for dll in libgcc_s_seh-1.dll libwinpthread-1.dll; do
-              if [ -f "/c/msys64/ucrt64/bin/${dll}" ]; then
-                cp "/c/msys64/ucrt64/bin/${dll}" dist/
-                files+=("${dll}")
-              fi
-            done
             sevenzip="/c/Program Files/7-Zip/7z.exe"
             if [ ! -x "$sevenzip" ]; then
               sevenzip=7z
@@ -162,6 +161,11 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v4
 
+      - name: Normalise the tag
+        run: |
+          tag="${{ inputs.tag }}"
+          echo "TAG=v${tag#[vV]}" >> "$GITHUB_ENV"
+
       - name: Download the archives
         uses: actions/download-artifact@v4
         with:
@@ -171,8 +175,8 @@ jobs:
       - name: Check the tag matches Cargo.toml
         run: |
           version=$(grep -m1 '^version = ' Cargo.toml | cut -d '"' -f2)
-          if [ "v${version}" != "${{ inputs.tag }}" ]; then
-            echo "Cargo.toml has ${version}, but the tag is ${{ inputs.tag }}." >&2
+          if [ "$TAG" != "v${version}" ]; then
+            echo "Cargo.toml has ${version}, so the tag has to be v${version}; this run uses ${TAG}." >&2
             exit 1
           fi
 
@@ -191,11 +195,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          args=(--title "parlor ${{ inputs.tag }}")
+          args=(--title "parlor ${TAG}")
           if [ "${{ inputs.draft }}" = "true" ]; then
             args+=(--draft)
           fi
-          gh release create "${{ inputs.tag }}" dist/* \
+          gh release create "$TAG" dist/* \
             --repo "${{ github.repository }}" \
             --notes-file notes.md \
             "${args[@]}"
