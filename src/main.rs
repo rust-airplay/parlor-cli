@@ -6,7 +6,8 @@
 //! policy around it — it parses arguments, decides where an identity lives, picks a
 //! renderer, and prints. It contains no protocol code at all.
 //!
-//! See `README.md` for what the receiver does and `docs/API.md` for the library.
+//! See `README.md` for what the receiver does. The library's API guide is at
+//! <https://github.com/rust-airplay/rust-airplay/blob/main/docs/API.md>.
 
 use std::collections::HashSet;
 use std::process::ExitCode;
