@@ -159,6 +159,7 @@ its base plugins on the machine that runs them.
   how a playback backend is written
 - [rust-airplay-gstream's README](https://github.com/rust-airplay/rust-airplay-gstream): sinks,
   elements and behaviour of the playback path
+- [CHANGELOG.md](CHANGELOG.md): what each release contains
 
 ## Licence
 

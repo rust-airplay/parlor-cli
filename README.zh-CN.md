@@ -124,6 +124,7 @@ cargo clippy --all-targets --features gst -- -D warnings
 - [rust-airplay 的 API](https://docs.rs/rust-airplay)：`Config`、渲染器 trait、各模块
 - [rust-airplay 的后端指南](https://github.com/rust-airplay/rust-airplay/blob/main/docs/BACKEND.md)：如何实现播放后端
 - [rust-airplay-gstream 的 README](https://github.com/rust-airplay/rust-airplay-gstream)：播放路径的 sink、元素与行为
+- [CHANGELOG.md](CHANGELOG.md)：每个版本包含什么
 
 ## 许可证
 
