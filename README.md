@@ -24,8 +24,8 @@ backend repository's README lists the elements per platform.
 parlor -n "Living room" -pin 1234
 ```
 
-A build with the `gst` feature plays through GStreamer unless told otherwise, which is what a
-UxPlay command expects. `--render null` reads a session without playing it.
+A build with the `gst` feature plays through GStreamer unless told otherwise. `--render null`
+reads a session without playing it.
 
 The program prints a short banner and then waits:
 
@@ -61,9 +61,6 @@ drawn password is printed when it is needed, whatever the log level is.
 
 ## Options
 
-The short names match UxPlay's command line, so a UxPlay command runs here unchanged for
-everything this receiver can honour.
-
 | Option | Meaning |
 | --- | --- |
 | `-n <name>` | the name clients see; defaults to `parlor` |
@@ -74,7 +71,7 @@ everything this receiver can honour.
 | `-m [mac]` | advertise this hardware address |
 | `-key [file]` | where the identity seed lives; without a file nothing is stored |
 | `-reg [file]` | where remembered clients live |
-| `-p [n]` | upstream's fixed port layout, or a base port `n` |
+| `-p [n]` | the fixed media port layout, or a base port `n` |
 | `-al <seconds>` | the audio delay a client schedules against; 0.25 by default |
 | `-vol <0..1>` | the volume a session starts at |
 | `-db <low:high>` | rescale the volume slider onto a dB range; `-30:0` by default |
@@ -105,6 +102,13 @@ Everything also has a long name, for a script that prefers words: `--name`, `--p
 `--metadata`, `--dacp`, `--audio-codec`, `--key-file`, `--clients-file`,
 `--ephemeral-seed`, `--random-password`, `--verbose` and `--base-port`.
 
+### Port layout and passwords
+
+- `-p n` lays out the ports as `tcp`/`udp` at `n..n+2`, with the control port at `n+1`. `-p`
+  alone selects the fixed layout: mirror `7100`, control `7000`, timing `7011`, UDP control
+  `6001`, data `6000`.
+- `-pw` without a password draws one for the process and prints it.
+
 ## Files
 
 The program keeps two files in the local application data directory: `parlor/identity.seed` and
@@ -118,36 +122,12 @@ The program keeps two files in the local application data directory: `parlor/ide
 `-key` and `-reg` move those files; `-key` without a file keeps the identity in memory only, so
 nothing is stored.
 
-## UxPlay compatibility
-
-The command line is UxPlay's, with two behavioural differences worth knowing:
-
-- `-p n` lays out the ports the way upstream does: `tcp`/`udp` at `n..n+2`, with the control
-  port at `n+1`. `-p` alone selects upstream's fixed layout: mirror `7100`, control `7000`,
-  timing `7011`, UDP control `6001`, data `6000`.
-- `-pw` without a password draws one for the process and prints it, where upstream draws a new
-  one at each connection.
-
-An option this receiver cannot honour is refused with the reason rather than ignored: `-hls`
-and its tuning options, `-mp4`, `-p2p`, `-vsync`, `-async`, `-vrtp`, `-artp`, `-v4l2`,
-`-bt709`, `-srgb`, `-fs`, `-f`, `-r`, `-nc`, `-nofreeze` and `-vc`. A command that needs one of
-them fails where the user can see it, instead of playing a session that quietly is not what was
-asked for.
-
 ## Latency
 
 A mirror is judged by how quickly the picture follows the device. The fastest path is the
 hardware one, which is the default where it exists: `d3d11h264dec` into `d3d11videosink` on
 Windows. `-vs d3d11videosink` brings that decoder with it; naming a sink and a decoder
 separately is how a hardware sink ends up fed by a software decoder.
-
-## Limits
-
-- No HLS, recording or peer-to-peer discovery; the core does not implement them either.
-- The volume a client sets attenuates the session, not the system mixer: the Windows volume
-  slider does not move.
-- The video path runs one `gst-launch-1.0` per stream, so it is a live stream; nothing can seek
-  inside it.
 
 ## Development
 
@@ -157,8 +137,8 @@ cargo test
 cargo clippy --all-targets --features gst -- -D warnings
 ```
 
-The tests parse the command line: the UxPlay names, the port layout, the optional values and the
-refusal of an unsupported option. They need no GStreamer.
+The tests parse the command line: the option names, the port layout, the optional values and the
+refusal of an invalid one. They need no GStreamer.
 
 ## Documentation
 
@@ -166,7 +146,7 @@ refusal of an unsupported option. They need no GStreamer.
 - [rust-airplay's backend guide](https://github.com/rust-airplay/rust-airplay/blob/main/docs/BACKEND.md):
   how a playback backend is written
 - [rust-airplay-gstream's README](https://github.com/rust-airplay/rust-airplay-gstream): sinks,
-  elements and limits of the playback path
+  elements and behaviour of the playback path
 
 ## Licence
 

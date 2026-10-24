@@ -20,7 +20,7 @@ const USAGE: &str = "parlor - an AirPlay receiver
 
 Usage: parlor [options]
 
-The names match UxPlay's command line, so a UxPlay command works here:
+The short names are the familiar ones for an AirPlay receiver:
 
   -n <name>          Name clients show (default: parlor)
   -nh                Accepted; this receiver never appends a hostname
@@ -69,11 +69,6 @@ The same options spelled out, for a script that prefers words:
   --dacp --audio-codec --key-file --clients-file --ephemeral-seed
   --random-password --verbose --base-port
 
-A UxPlay option this receiver cannot honour is refused with the reason, not
-ignored: -hls and its tuning options (-lang, -slang, -custom, -rpi), -mp4,
--p2p, -vsync, -async, -vrtp, -artp, -v4l2, -bt709, -srgb, -fs, -f, -r, -nc,
--nofreeze and -vc.
-
 `--render null` reads the media, decrypts and orders it, and plays nothing,
 which is how a session is checked without a sound card. `--render gst` hands it
 to GStreamer. A build with the `gst` feature plays through GStreamer unless told
@@ -114,7 +109,7 @@ struct Options {
     allow: Vec<String>,
     /// Devices that never may.
     block: Vec<String>,
-    /// Whether to bind upstream's fixed media port layout.
+    /// Whether to bind the protocol's fixed media port layout.
     legacy_ports: bool,
     /// Whether a new client takes over from the current one.
     nohold: bool,
@@ -152,9 +147,9 @@ struct Options {
     key_file: Option<std::path::PathBuf>,
     /// Where remembered clients live, when the user named a file.
     clients_file: Option<std::path::PathBuf>,
-    /// Whether to print a random password and require it, upstream's `-pw` without one.
+    /// Whether to print a random password and require it, the protocol's `-pw` without one.
     random_password: bool,
-    /// A base port, upstream's `-p n`.
+    /// A base port, the protocol's `-p n`.
     base_port: Option<u16>,
     /// What the console shows; warnings by default.
     log_level: log::LevelFilter,
@@ -324,7 +319,7 @@ async fn run() -> Result<(), String> {
 
     let seed = match options.seed {
         Some(seed) => seed,
-        // `-key` without a file means "do not keep an identity", which is upstream's
+        // `-key` without a file means "do not keep an identity", which is the protocol's
         // behaviour and what a test run wants: pairing works, and nothing is left behind.
         None if options.ephemeral_seed => {
             log::info!("identity  ephemeral (nothing is stored)");
@@ -364,7 +359,7 @@ async fn run() -> Result<(), String> {
         (options.width, options.height)
     };
 
-    // `-pw` without a password asks for one to be drawn; upstream draws a fresh one per
+    // `-pw` without a password asks for one to be drawn; the protocol draws a fresh one per
     // connection, this receiver draws one for the run and prints it.
     let mut password = options.password.clone();
     if options.random_password && password.is_none() {
@@ -568,7 +563,7 @@ fn hex(bytes: &[u8]) -> String {
 
 /// The media ports this run binds.
 ///
-/// `--legacy-ports` picks upstream's fixed layout; an explicit flag overrides one port of
+/// `--legacy-ports` picks the protocol's fixed layout; an explicit flag overrides one port of
 /// it rather than replacing the layout, so `--legacy-ports --data-port 6005` is a layout
 /// with one port moved.
 fn media_ports(options: &Options) -> rust_airplay::media::ports::MediaPorts {
@@ -592,7 +587,7 @@ fn media_ports(options: &Options) -> rust_airplay::media::ports::MediaPorts {
 
 /// The control port and media ports this run binds.
 ///
-/// `-p n` is upstream's layout: `tcp[0..3]` and `udp[0..3]` are `n..n+2`, and the RTSP
+/// `-p n` is the protocol's layout: `tcp[0..3]` and `udp[0..3]` are `n..n+2`, and the RTSP
 /// control port is `tcp[1]`, which is `n+1`. Legacy and explicit port flags keep their own
 /// meaning, and a base port overrides them all because it names the whole layout.
 fn resolve_ports(options: &Options) -> (u16, rust_airplay::media::ports::MediaPorts) {
@@ -618,8 +613,7 @@ fn data_directory() -> Result<std::path::PathBuf, String> {
 
 /// Where `-dacp` writes when it is given no file.
 ///
-/// Upstream writes `$HOME/.uxplay.dacp`; this program keeps its files together instead, so
-/// the default is the same directory as the identity.
+/// The default is the same directory as the identity, so a program's files stay together.
 fn default_dacp_path() -> Result<std::path::PathBuf, String> {
     Ok(data_directory()?.join("dacp"))
 }
@@ -696,7 +690,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
         match argument.as_str() {
             "--help" | "-h" | "-help" => return Ok(None),
 
-            // UxPlay's names. A command written for it runs here unchanged for everything
+            // the reference's names. A command written for it runs here unchanged for everything
             // this receiver can honour.
             "-n" => options.name = next_value(&mut arguments, "-n")?,
             // Accepted, and there is nothing to do: a name is the name, and this receiver
@@ -718,7 +712,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
                 Some(password) => {
                     options.password = Some(password_option("-pw", password)?);
                 }
-                // Upstream draws a password at each connection; this receiver prints one
+                // The protocol draws a password at each connection; this receiver prints one
                 // and keeps it for the run, which is the same promise to the user.
                 None => options.random_password = true,
             },
@@ -737,7 +731,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
                 }
             }
             "-p" => match optional_value(&mut arguments) {
-                // Upstream also accepts `-p tcp <list>` and `-p udp <list>`; a list is
+                // The protocol also accepts `-p tcp <list>` and `-p udp <list>`; a list is
                 // refused rather than read as a port, so the message says what happened.
                 Some(kind) if kind == "tcp" || kind == "udp" => {
                     return Err(format!(
@@ -842,7 +836,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
             "-v" => options.log_level = log::LevelFilter::Info,
             "-q" => options.log_level = log::LevelFilter::Error,
 
-            // Options this receiver cannot honour are refused with the reason. A UxPlay
+            // Options this receiver cannot honour are refused with the reason. A the reference
             // command that asks for HLS or for recording has to fail where the user can see
             // it, not play a session that quietly is not what was asked for.
             "-hls" | "-vsync" | "-async" | "-bt709" | "-srgb" | "-fs" | "-nc" | "-nofreeze"
@@ -1024,7 +1018,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
             "--taper" => options.taper = true,
             "--fps-data" => options.fps_data = true,
             "--cover-art" => {
-                // The path is optional: upstream's `-ca` without one shows the art, which a
+                // The path is optional: the protocol's `-ca` without one shows the art, which a
                 // command-line receiver can only report.
                 options.cover_art = arguments.peek().and_then(|next| {
                     (!next.starts_with('-')).then(|| std::path::PathBuf::from(next.clone()))
@@ -1102,7 +1096,7 @@ fn next_value(
 
 /// Takes the next argument when it is a value rather than another option.
 ///
-/// Upstream's optional-value options (`-pin`, `-pw`, `-key`, `-ca`, `-dacp`) are written
+/// The protocol's optional-value options (`-pin`, `-pw`, `-key`, `-ca`, `-dacp`) are written
 /// `-pin 1234` or `-pin`, and the difference is whether the next word starts with a dash.
 fn optional_value(
     arguments: &mut std::iter::Peekable<impl Iterator<Item = String>>,
@@ -1128,7 +1122,7 @@ fn within<T: PartialOrd + Copy + std::fmt::Display>(
 
 /// Checks a PIN is one a person can type: four digits, 0001 to 9999.
 ///
-/// Upstream refuses anything outside that range when it parses the option, and a fixed PIN
+/// The protocol refuses anything outside that range when it parses the option, and a fixed PIN
 /// outside it is a receiver no client can pair with.
 fn pin_option(option: &str, digits: u16) -> Result<u16, String> {
     if !(1..=9999).contains(&digits) {
@@ -1137,7 +1131,7 @@ fn pin_option(option: &str, digits: u16) -> Result<u16, String> {
     Ok(digits)
 }
 
-/// Checks a password against the minimum length upstream enforces.
+/// Checks a password against the minimum length the protocol enforces.
 fn password_option(option: &str, value: String) -> Result<String, String> {
     if value.chars().count() < 4 {
         return Err(format!(
@@ -1164,7 +1158,7 @@ fn parse_level(name: &str) -> Result<log::LevelFilter, String> {
     })
 }
 
-/// Reads a display the way upstream writes one: `1920x1080` or `1920x1080@60`.
+/// Reads a display the way the protocol writes one: `1920x1080` or `1920x1080@60`.
 fn parse_display(text: &str) -> Result<(u64, u64, Option<f64>), String> {
     let (size, rate) = match text.split_once('@') {
         Some((size, rate)) => {
@@ -1200,8 +1194,8 @@ mod tests {
     }
 
     #[test]
-    fn a_uxplay_command_line_reaches_the_same_options() {
-        // The point of the compatibility names: a command written for UxPlay runs here.
+    fn a_compatible_command_line_reaches_the_same_options() {
+        // The point of the compatibility names: a command written for the reference runs here.
         let options = parse(&[
             "-n",
             "Parlor",
@@ -1243,9 +1237,9 @@ mod tests {
     }
 
     #[test]
-    fn the_port_option_keeps_upstreams_layout() {
+    fn the_port_option_keeps_the_layout() {
         // `-p` alone is the fixed layout; `-p n` puts tcp and udp at n..n+2 and the control
-        // port at n+1 (`uxplay.cpp`, `-p` handling).
+        // port at n+1.
         let fixed = parse(&["-p"]).expect("parsed");
         assert!(fixed.legacy_ports);
         assert!(fixed.base_port.is_none());
@@ -1292,7 +1286,7 @@ mod tests {
     fn options_outside_their_range_are_refused() {
         // Each of these was accepted before the audit and either clamped silently or
         // produced a value the protocol cannot use: a PIN of zero, a password shorter than
-        // upstream's minimum, a volume above unity, a negative timeout, a display with no
+        // the protocol's minimum, a volume above unity, a negative timeout, a display with no
         // pixels, a port layout that runs past 65535.
         for arguments in [
             &["-pin", "0"][..],
