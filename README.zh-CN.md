@@ -2,7 +2,7 @@
 
 `parlor`：命令行上的 AirPlay 接收端。
 
-它是程序，不是协议。接收端本身是 [`rust-airplay`](https://github.com/rust-airplay/rust-airplay)，播放由 [`rust-airplay-gstream`](https://github.com/rust-airplay/rust-airplay-gstream) 负责；这个 crate 只解析参数、在磁盘上保存两个文件、安装 logger。
+它是程序，不是协议。接收端本身是 [`rust-airplay`](https://github.com/rust-airplay/rust-airplay)，播放由 [`rust-airplay-gstream`](https://github.com/rust-airplay/rust-airplay-gstream) 负责；这个 crate 解析参数、保存两个文件、安装 logger 并打印。它不含任何协议代码。
 
 ## 构建
 
@@ -10,7 +10,7 @@
 cargo build --release --features gst
 ```
 
-不带 `--features gst` 时，程序只能读会话、不播放（即 `--render null`）。带上它则需要 GStreamer：构建要开发库，播放要运行时与插件。各平台的元素清单见后端仓库的 README。
+不带 `--features gst` 时，程序仍能构建，但不播放：它读取会话并报告，这是在无声卡的机器上检查会话的方式。带上该 feature 则需要安装 GStreamer——构建要开发文件，运行要运行时与插件。各平台所需的元素见后端仓库的 README。
 
 ## 运行
 
@@ -18,7 +18,9 @@ cargo build --release --features gst
 parlor -n "Living room" -pin 1234
 ```
 
-带 `gst` feature 的构建默认通过 GStreamer 播放，这正是 UxPlay 命令所期望的；`--render null` 留给"只读会话不放声音"的场景。
+带 `gst` feature 的构建默认通过 GStreamer 播放，这正是 UxPlay 命令所期望的；`--render null` 用于只读会话、不放声音的场景。
+
+程序打印一段简短标题后等待：
 
 ```
 parlor 0.1.0 - an AirPlay receiver
@@ -31,11 +33,25 @@ parlor 0.1.0 - an AirPlay receiver
 Waiting for a client. Press Ctrl+C to stop.
 ```
 
-在 iPhone 或 iPad 上打开 AirPlay 菜单，选中接收端，输入程序打印的 PIN。客户端一连上就开始镜像；客户端开始播放时就有声音。
+在 iPhone 或 iPad 上打开 AirPlay 菜单，选中接收端，在提示出现时输入 PIN。客户端一连上就开始镜像；客户端开始播放时就有声音。
+
+## 控制台
+
+标题只打印一次。之后控制台只显示警告与错误；PIN 或生成的口令在需要时打印，与日志级别无关。
+
+| 参数 | 显示内容 |
+| --- | --- |
+| `-q` | 只有错误 |
+| 默认 | 警告与错误 |
+| `-v`、`--verbose` | 再加上会话记录：流打开、时钟、媒体统计 |
+| `-d` | 再加上协议细节 |
+| `--log-level <level>` | 直接指定：`off`、`error`、`warn`、`info`、`debug`、`trace` |
+
+`--log <file>` 把请求轨迹追加到文件，与以上级别无关。
 
 ## 参数
 
-参数名与 UxPlay 的命令行一致：凡是本接收端能做的，UxPlay 的命令可以原样跑。
+短参数名与 UxPlay 的命令行一致，凡是本接收端能做的，UxPlay 的命令可以原样跑。
 
 | 参数 | 含义 |
 | --- | --- |
@@ -65,23 +81,54 @@ Waiting for a client. Press Ctrl+C to stop.
 | `-nohold` | 新客户端顶替当前连接 |
 | `-restrict` / `-allow <id>` / `-block <id>` | 允许哪些设备连接 |
 | `-FPSdata` | 记录客户端自己的流报告 |
-| `-q` | 控制台只显示错误 |
-| `-v` | 连会话记录一起显示 |
-| `-d` | 全部显示，包括协议细节 |
-| `--log-level <level>` | `off`、`error`、`warn`（默认）、`info`、`debug`、`trace` |
+| `-q`、`-v`、`-d`、`--log-level` | 控制台显示什么 |
 | `-h`、`-help` | 打印用法并退出 |
-
-本接收端无法兑现的 UxPlay 参数会被**拒绝并说明原因**，而不是被忽略：`-hls` 及其调优参数、`-mp4`、`-p2p`、`-vsync`、`-async`、`-vrtp`、`-artp`、`-v4l2`、`-bt709`、`-srgb`、`-fs`、`-f`、`-r`、`-nc`、`-nofreeze`、`-vc`。需要这些功能的命令必须在用户看得见的地方失败，而不是跑出一场"其实不是所要求"的会话。
 
 每个参数也都有长名字，给偏好单词的脚本：`--name`、`--port`、`--no-pin`、`--password`、`--device-id`、`--seed`、`--log`、`--render`、`--audio-sink`、`--video-sink`、`--video-parser`、`--video-decoder`、`--warm-video`、`--pace-video`、`--width`、`--height`、`--refresh-rate`、`--max-fps`、`--overscanned`、`--hevc`、`--features`、`--restrict`、`--allow`、`--block`、`--legacy-ports`、`--timing-port`、`--udp-control-port`、`--data-port`、`--mirror-port`、`--nohold`、`--reset`、`--audio-latency`、`--volume`、`--taper`、`--db`、`--fps-data`、`--cover-art`、`--metadata`、`--dacp`、`--audio-codec`、`--key-file`、`--clients-file`、`--ephemeral-seed`、`--random-password`、`--verbose`、`--base-port`。
 
-默认情况下控制台只在启动时打印一行，其余只有警告与错误；PIN 在生成时打印。`-v` 追加会话记录，`-d` 追加协议细节，`-q` 只留错误。用 `--log` 写入的请求轨迹不受这些影响。
+## 文件
 
-程序在本地应用数据目录下保存两个文件：`parlor/identity.seed` 与 `parlor/clients`。前者首次运行时生成，是接收端身份保持稳定的原因；后者每行一个 64 字符十六进制客户端密钥。删除身份会让所有客户端重新配对；删除客户端列表则保留身份、只忘记客户端。`-key` 与 `-reg` 可以搬动这两个文件，`-key` 不带文件则表示身份只存在于内存里。
+程序在本地应用数据目录下保存两个文件：`parlor/identity.seed` 与 `parlor/clients`。
+
+- `identity.seed` 首次运行时生成，是接收端跨重启保持可识别的原因。删除它会让所有客户端重新配对。
+- `clients` 每行一个 64 字符十六进制客户端密钥。删除它保留身份、只忘记客户端。
+
+`-key` 与 `-reg` 可以搬动这两个文件；`-key` 不带文件表示身份只存在于内存里，什么都不保存。
+
+## 与 UxPlay 的差异
+
+命令行沿用 UxPlay 的名字，有两处行为差异值得知道：
+
+- `-p n` 按上游方式布置端口：`tcp`/`udp` 占 `n..n+2`，控制端口是 `n+1`。只写 `-p` 选择上游的固定布局：镜像 `7100`、控制 `7000`、timing `7011`、UDP 控制 `6001`、数据 `6000`。
+- `-pw` 不带口令时，本程序为整个进程生成一次并打印，而上游每次连接生成一次。
+
+本接收端无法兑现的参数会被**拒绝并说明原因**，而不是被忽略：`-hls` 及其调优参数、`-mp4`、`-p2p`、`-vsync`、`-async`、`-vrtp`、`-artp`、`-v4l2`、`-bt709`、`-srgb`、`-fs`、`-f`、`-r`、`-nc`、`-nofreeze`、`-vc`。需要这些功能的命令会在用户看得见的地方失败，而不是跑出一场"其实不是所要求"的会话。
 
 ## 延迟
 
-投屏看的是画面跟手的快慢。最快的路径是硬件解码，在支持的平台上是默认值：Windows 上 `d3d11h264dec` 直接进 `d3d11videosink`。`--video-sink d3d11videosink` 会把这个解码器一起带上；分别指定 sink 与解码器，正是"硬件 sink 被软件解码器喂着"的由来。
+投屏看的是画面跟手的快慢。最快的路径是硬件路径，在有它的平台上就是默认：Windows 上的 `d3d11h264dec` 进 `d3d11videosink`。`-vs d3d11videosink` 会把解码器一起换过去；单独指定 sink 与解码器，会让硬件 sink 被软件解码器喂数据。
+
+## 限制
+
+- 没有 HLS、录制或点对点发现；核心也没有实现它们。
+- 客户端设置的音量只衰减会话，不动系统混音器：Windows 音量滑块不会移动。
+- 视频路径每条流一个 `gst-launch-1.0`，所以是直播流，无法在其中拖动。
+
+## 开发
+
+```sh
+cargo fmt --all -- --check
+cargo test
+cargo clippy --all-targets --features gst -- -D warnings
+```
+
+测试解析命令行：UxPlay 名字、端口布局、可选值、以及对不支持参数的拒绝。它们不需要 GStreamer。
+
+## 文档
+
+- [rust-airplay 的 API](https://docs.rs/rust-airplay)：`Config`、渲染器 trait、各模块
+- [rust-airplay 的后端指南](https://github.com/rust-airplay/rust-airplay/blob/main/docs/BACKEND.md)：如何实现播放后端
+- [rust-airplay-gstream 的 README](https://github.com/rust-airplay/rust-airplay-gstream)：播放路径的 sink、元素与限制
 
 ## 许可证
 

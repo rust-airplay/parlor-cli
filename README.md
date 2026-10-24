@@ -2,10 +2,10 @@
 
 `parlor`: an AirPlay receiver on the command line.
 
-It is the program, not the protocol. The receiver itself is
+It is the program, not the protocol. The receiver is
 [`rust-airplay`](https://github.com/rust-airplay/rust-airplay) and playback is
 [`rust-airplay-gstream`](https://github.com/rust-airplay/rust-airplay-gstream); this crate
-parses arguments, keeps two files on disk, and installs a logger.
+parses arguments, keeps two files, installs a logger, and prints. It contains no protocol code.
 
 ## Building
 
@@ -13,10 +13,10 @@ parses arguments, keeps two files on disk, and installs a logger.
 cargo build --release --features gst
 ```
 
-Without `--features gst` the program builds and plays nothing (`--render null`), which
-reads a session and is how it is checked without a sound card. With it, GStreamer must be installed: the development files to
-build, the runtime and its plugins to play. See the backend repository's README for the
-element list per platform.
+Without `--features gst` the program builds and plays nothing: it reads a session and reports
+it, which is how a session is checked without a sound card. With the feature, GStreamer must be
+installed - the development files to build, and the runtime plus its plugins to play. The
+backend repository's README lists the elements per platform.
 
 ## Running
 
@@ -24,8 +24,10 @@ element list per platform.
 parlor -n "Living room" -pin 1234
 ```
 
-A build with the `gst` feature plays through GStreamer by default, which is what a UxPlay
-command expects; `--render null` is there for a session that should be read without sound.
+A build with the `gst` feature plays through GStreamer unless told otherwise, which is what a
+UxPlay command expects. `--render null` reads a session without playing it.
+
+The program prints a short banner and then waits:
 
 ```
 parlor 0.1.0 - an AirPlay receiver
@@ -38,14 +40,29 @@ parlor 0.1.0 - an AirPlay receiver
 Waiting for a client. Press Ctrl+C to stop.
 ```
 
-On an iPhone or iPad, open the AirPlay menu, pick the receiver and type the PIN the program
-prints. Screen mirroring starts as soon as the client connects; audio follows whenever the
-client plays something.
+On an iPhone or iPad, open the AirPlay menu, pick the receiver and enter the PIN when it
+appears. Screen mirroring starts as soon as the client connects; audio follows when the client
+plays something.
+
+## The console
+
+The banner is printed once. After that the console shows warnings and errors only; a PIN or a
+drawn password is printed when it is needed, whatever the log level is.
+
+| Flag | What it shows |
+| --- | --- |
+| `-q` | errors only |
+| the default | warnings and errors |
+| `-v`, `--verbose` | plus the session's records: streams opening, clocks, media statistics |
+| `-d` | plus protocol detail |
+| `--log-level <level>` | names a level directly: `off`, `error`, `warn`, `info`, `debug`, `trace` |
+
+`--log <file>` appends a request trace to a file and is independent of all of them.
 
 ## Options
 
-The names match UxPlay's command line, so a UxPlay command runs here unchanged for
-everything this receiver can honour:
+The short names match UxPlay's command line, so a UxPlay command runs here unchanged for
+everything this receiver can honour.
 
 | Option | Meaning |
 | --- | --- |
@@ -75,17 +92,8 @@ everything this receiver can honour:
 | `-nohold` | a new client takes over from the current one |
 | `-restrict` / `-allow <id>` / `-block <id>` | which clients may connect |
 | `-FPSdata` | log the client's own streaming reports |
-| `-q` | only errors on the console |
-| `-v` | show the session's records as well |
-| `-d` | show everything, including protocol detail |
-| `--log-level <level>` | `off`, `error`, `warn` (the default), `info`, `debug` or `trace` |
+| `-q`, `-v`, `-d`, `--log-level` | what the console shows |
 | `-h`, `-help` | print the usage text and exit |
-
-A UxPlay option this receiver cannot honour is refused with the reason rather than
-ignored: `-hls` and its tuning options, `-mp4`, `-p2p`, `-vsync`, `-async`, `-vrtp`,
-`-artp`, `-v4l2`, `-bt709`, `-srgb`, `-fs`, `-f`, `-r`, `-nc`, `-nofreeze` and `-vc`.
-A command that needs one of them has to fail where the user can see it, not play a session
-that quietly is not what was asked for.
 
 Everything also has a long name, for a script that prefers words: `--name`, `--port`,
 `--no-pin`, `--password`, `--device-id`, `--seed`, `--log`, `--render`, `--audio-sink`,
@@ -97,27 +105,71 @@ Everything also has a long name, for a script that prefers words: `--name`, `--p
 `--metadata`, `--dacp`, `--audio-codec`, `--key-file`, `--clients-file`,
 `--ephemeral-seed`, `--random-password`, `--verbose` and `--base-port`.
 
-By default the console shows one line at start and nothing else but warnings and errors; the
-PIN is printed when it is drawn. `-v` adds the session's own records, `-d` adds protocol detail,
-and `-q` leaves errors only. The request trace written with `--log` is unaffected by any of
-them.
+## Files
 
-The program keeps two files in the local application data directory, `parlor/identity.seed`
-and `parlor/clients`. The first is created on the first run and is what keeps the receiver's
-identity stable; the second lists client keys, one 64-character hex key per line. Deleting
-the identity makes every client pair again; deleting the client list keeps the identity and
-forgets the clients. `-key` and `-reg` move those files, and `-key` with no file keeps the
-identity in memory only.
+The program keeps two files in the local application data directory: `parlor/identity.seed` and
+`parlor/clients`.
+
+- `identity.seed` is created on the first run and is what keeps the receiver recognisable
+  across restarts. Deleting it makes every client pair again.
+- `clients` lists verified client keys, one 64-character hex key per line. Deleting it keeps
+  the identity and forgets the clients.
+
+`-key` and `-reg` move those files; `-key` without a file keeps the identity in memory only, so
+nothing is stored.
+
+## UxPlay compatibility
+
+The command line is UxPlay's, with two behavioural differences worth knowing:
+
+- `-p n` lays out the ports the way upstream does: `tcp`/`udp` at `n..n+2`, with the control
+  port at `n+1`. `-p` alone selects upstream's fixed layout: mirror `7100`, control `7000`,
+  timing `7011`, UDP control `6001`, data `6000`.
+- `-pw` without a password draws one for the process and prints it, where upstream draws a new
+  one at each connection.
+
+An option this receiver cannot honour is refused with the reason rather than ignored: `-hls`
+and its tuning options, `-mp4`, `-p2p`, `-vsync`, `-async`, `-vrtp`, `-artp`, `-v4l2`,
+`-bt709`, `-srgb`, `-fs`, `-f`, `-r`, `-nc`, `-nofreeze` and `-vc`. A command that needs one of
+them fails where the user can see it, instead of playing a session that quietly is not what was
+asked for.
 
 ## Latency
 
 A mirror is judged by how quickly the picture follows the device. The fastest path is the
 hardware one, which is the default where it exists: `d3d11h264dec` into `d3d11videosink` on
-Windows. `--video-sink d3d11videosink` brings that decoder with it; naming a sink and a
-decoder separately is how a hardware sink ends up fed by a software decoder.
+Windows. `-vs d3d11videosink` brings that decoder with it; naming a sink and a decoder
+separately is how a hardware sink ends up fed by a software decoder.
+
+## Limits
+
+- No HLS, recording or peer-to-peer discovery; the core does not implement them either.
+- The volume a client sets attenuates the session, not the system mixer: the Windows volume
+  slider does not move.
+- The video path runs one `gst-launch-1.0` per stream, so it is a live stream; nothing can seek
+  inside it.
+
+## Development
+
+```sh
+cargo fmt --all -- --check
+cargo test
+cargo clippy --all-targets --features gst -- -D warnings
+```
+
+The tests parse the command line: the UxPlay names, the port layout, the optional values and the
+refusal of an unsupported option. They need no GStreamer.
+
+## Documentation
+
+- [rust-airplay's API](https://docs.rs/rust-airplay): `Config`, the renderer traits, the modules
+- [rust-airplay's backend guide](https://github.com/rust-airplay/rust-airplay/blob/main/docs/BACKEND.md):
+  how a playback backend is written
+- [rust-airplay-gstream's README](https://github.com/rust-airplay/rust-airplay-gstream): sinks,
+  elements and limits of the playback path
 
 ## Licence
 
 GPL-3.0-or-later. See [LICENSE](LICENSE).
 
-中文：[README.zh-CN.md](README.zh-CN.md)。
+Chinese: [README.zh-CN.md](README.zh-CN.md).

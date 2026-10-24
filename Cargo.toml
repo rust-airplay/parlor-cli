@@ -2,6 +2,7 @@
 name = "parlor-cli"
 description = "parlor: an AirPlay receiver on the command line"
 repository = "https://github.com/rust-airplay/parlor-cli"
+homepage = "https://github.com/rust-airplay/parlor-cli"
 readme = "README.md"
 version = "0.1.0"
 edition = "2024"
