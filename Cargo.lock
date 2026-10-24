@@ -852,7 +852,7 @@ dependencies = [
 [[package]]
 name = "rust-airplay"
 version = "0.1.0"
-source = "git+https://github.com/rust-airplay/rust-airplay?branch=main#c998e5bc6ec3044a227addffc9b6bf59314b6ecc"
+source = "git+https://github.com/rust-airplay/rust-airplay?branch=main#4a5192d82689a7157196b4be898033f917f75558"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -876,7 +876,7 @@ dependencies = [
 [[package]]
 name = "rust-airplay-gstream"
 version = "0.1.0"
-source = "git+https://github.com/rust-airplay/rust-airplay-gstream?branch=main#9e87d4bfbf864e193a8d24d443211137b2a8b410"
+source = "git+https://github.com/rust-airplay/rust-airplay-gstream?branch=main#cd4bcdabae2217d11522c587d92edcb506a1732b"
 dependencies = [
  "gstreamer",
  "gstreamer-app",
