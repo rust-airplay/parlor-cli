@@ -54,12 +54,17 @@ parlor -n "Living room" -pin 1234
 | `-nohold` | 新客户端顶替当前连接 |
 | `-restrict` / `-allow <id>` / `-block <id>` | 允许哪些设备连接 |
 | `-FPSdata` | 记录客户端自己的流报告 |
-| `-d` | 日志更详细 |
+| `-q` | 控制台只显示错误 |
+| `-v` | 连会话记录一起显示 |
+| `-d` | 全部显示，包括协议细节 |
+| `--log-level <level>` | `off`、`error`、`warn`（默认）、`info`、`debug`、`trace` |
 | `-h`、`-help` | 打印用法并退出 |
 
 本接收端无法兑现的 UxPlay 参数会被**拒绝并说明原因**，而不是被忽略：`-hls` 及其调优参数、`-mp4`、`-p2p`、`-vsync`、`-async`、`-vrtp`、`-artp`、`-v4l2`、`-bt709`、`-srgb`、`-fs`、`-f`、`-r`、`-nc`、`-nofreeze`、`-vc`。需要这些功能的命令必须在用户看得见的地方失败，而不是跑出一场"其实不是所要求"的会话。
 
 每个参数也都有长名字，给偏好单词的脚本：`--name`、`--port`、`--no-pin`、`--password`、`--device-id`、`--seed`、`--log`、`--render`、`--audio-sink`、`--video-sink`、`--video-parser`、`--video-decoder`、`--warm-video`、`--pace-video`、`--width`、`--height`、`--refresh-rate`、`--max-fps`、`--overscanned`、`--hevc`、`--features`、`--restrict`、`--allow`、`--block`、`--legacy-ports`、`--timing-port`、`--udp-control-port`、`--data-port`、`--mirror-port`、`--nohold`、`--reset`、`--audio-latency`、`--volume`、`--taper`、`--db`、`--fps-data`、`--cover-art`、`--metadata`、`--dacp`、`--audio-codec`、`--key-file`、`--clients-file`、`--ephemeral-seed`、`--random-password`、`--verbose`、`--base-port`。
+
+默认情况下控制台只在启动时打印一行，其余只有警告与错误；PIN 在生成时打印。`-v` 追加会话记录，`-d` 追加协议细节，`-q` 只留错误。用 `--log` 写入的请求轨迹不受这些影响。
 
 程序在本地应用数据目录下保存两个文件：`parlor/identity.seed` 与 `parlor/clients`。前者首次运行时生成，是接收端身份保持稳定的原因；后者每行一个 64 字符十六进制客户端密钥。删除身份会让所有客户端重新配对；删除客户端列表则保留身份、只忘记客户端。`-key` 与 `-reg` 可以搬动这两个文件，`-key` 不带文件则表示身份只存在于内存里。
 

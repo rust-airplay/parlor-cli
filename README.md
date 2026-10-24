@@ -64,7 +64,10 @@ everything this receiver can honour:
 | `-nohold` | a new client takes over from the current one |
 | `-restrict` / `-allow <id>` / `-block <id>` | which clients may connect |
 | `-FPSdata` | log the client's own streaming reports |
-| `-d` | more detail in the log |
+| `-q` | only errors on the console |
+| `-v` | show the session's records as well |
+| `-d` | show everything, including protocol detail |
+| `--log-level <level>` | `off`, `error`, `warn` (the default), `info`, `debug` or `trace` |
 | `-h`, `-help` | print the usage text and exit |
 
 A UxPlay option this receiver cannot honour is refused with the reason rather than
@@ -82,6 +85,11 @@ Everything also has a long name, for a script that prefers words: `--name`, `--p
 `--audio-latency`, `--volume`, `--taper`, `--db`, `--fps-data`, `--cover-art`,
 `--metadata`, `--dacp`, `--audio-codec`, `--key-file`, `--clients-file`,
 `--ephemeral-seed`, `--random-password`, `--verbose` and `--base-port`.
+
+By default the console shows one line at start and nothing else but warnings and errors; the
+PIN is printed when it is drawn. `-v` adds the session's own records, `-d` adds protocol detail,
+and `-q` leaves errors only. The request trace written with `--log` is unaffected by any of
+them.
 
 The program keeps two files in the local application data directory, `parlor/identity.seed`
 and `parlor/clients`. The first is created on the first run and is what keeps the receiver's

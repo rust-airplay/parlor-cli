@@ -52,7 +52,10 @@ The names match UxPlay's command line, so a UxPlay command works here:
   -allow <id>        A device that may connect (repeatable)
   -block <id>        A device that never may (repeatable)
   -FPSdata           Log the client's streaming reports
-  -d                 More detail in the log
+  -q                 Only errors on the console
+  -v                 Show the session's records as well
+  -d                 Show everything, including protocol detail
+  --log-level <l>    Off, error, warn (default), info, debug or trace
   -h, -help          Print this text
 
 The same options spelled out, for a script that prefers words:
@@ -153,8 +156,8 @@ struct Options {
     random_password: bool,
     /// A base port, upstream's `-p n`.
     base_port: Option<u16>,
-    /// Whether to log at debug level, upstream's `-d`.
-    verbose: bool,
+    /// What the console shows; warnings by default.
+    log_level: log::LevelFilter,
 }
 
 /// What plays the media a client sends.
@@ -203,7 +206,7 @@ impl Default for Options {
             clients_file: None,
             random_password: false,
             base_port: None,
-            verbose: false,
+            log_level: log::LevelFilter::Warn,
             hevc: false,
             features: None,
             restrict: false,
@@ -268,7 +271,7 @@ fn open_gst(options: &Options) -> Result<Arc<dyn Renderer>, String> {
         .map_err(|error| format!("--render gst: {error}"))?;
     let renderer = rust_airplay_gstream::GstRenderer::with_options(&program, backend)
         .map_err(|error| format!("--render gst: {error}"))?;
-    println!(
+    log::info!(
         "render    gst    {} -> audio {}, video {}",
         renderer.program(),
         renderer.audio_sink(),
@@ -277,7 +280,7 @@ fn open_gst(options: &Options) -> Result<Arc<dyn Renderer>, String> {
     // Whether the video pipeline is already up is the difference between a picture that
     // appears at once and one that takes about a second, so it is worth saying which of
     // the two a session will get.
-    println!(
+    log::info!(
         "render    video  {}",
         if renderer.video_is_warm() {
             "warm (started before any client, so a connection does not wait for a window)"
@@ -317,14 +320,14 @@ async fn run() -> Result<(), String> {
             return Ok(());
         }
     };
-    install_logger(options.verbose);
+    install_logger(options.log_level);
 
     let seed = match options.seed {
         Some(seed) => seed,
         // `-key` without a file means "do not keep an identity", which is upstream's
         // behaviour and what a test run wants: pairing works, and nothing is left behind.
         None if options.ephemeral_seed => {
-            println!("identity  ephemeral (nothing is stored)");
+            log::info!("identity  ephemeral (nothing is stored)");
             let mut seed = [0u8; 32];
             getrandom::getrandom(&mut seed).map_err(|error| format!("no random bytes: {error}"))?;
             seed
@@ -336,7 +339,7 @@ async fn run() -> Result<(), String> {
     // already waiting for sound.
     let renderer = renderer(options.render, &options)?;
     if options.render == RenderBackend::Null {
-        println!("render    null   media is read and played nowhere");
+        log::info!("render    null   media is read and played nowhere");
     }
 
     // The registry lives here, not in the library: a receiver decides for itself how it
@@ -376,7 +379,9 @@ async fn run() -> Result<(), String> {
         let mut bytes = [0u8; 6];
         getrandom::getrandom(&mut bytes).map_err(|error| format!("no random bytes: {error}"))?;
         let drawn = hex(&bytes);
-        println!("password  {drawn}");
+        // The drawn password is for the person at the keyboard, so it is printed whatever
+        // the log level is.
+        println!("*** password {drawn} ***");
         password = Some(drawn);
     }
 
@@ -426,7 +431,23 @@ async fn run() -> Result<(), String> {
         }) as rust_airplay::RemoteControlCallback
     });
 
+    let on_pin: rust_airplay::PinCallback = Arc::new(|pin: &str| {
+        println!("*** enter PIN {pin} on the client ***");
+    });
+
+    // One line whatever the log level is, so a run with no log still says it started and
+    // what it is playing through.
+    println!(
+        "parlor: {} is running ({} renderer); -v for detail",
+        options.name,
+        match options.render {
+            RenderBackend::Null => "null",
+            RenderBackend::Gst => "gstreamer",
+        }
+    );
+
     let config = rust_airplay::Config {
+        on_pin: Some(on_pin),
         name: options.name,
         port: control_port,
         seed,
@@ -479,7 +500,7 @@ async fn run() -> Result<(), String> {
 ///
 /// The library emits `log` records rather than printing, because a library that writes to
 /// standard output takes that decision away from the program embedding it.
-fn install_logger(verbose: bool) {
+fn install_logger(level: log::LevelFilter) {
     struct Terminal;
 
     impl log::Log for Terminal {
@@ -498,11 +519,6 @@ fn install_logger(verbose: bool) {
         fn flush(&self) {}
     }
 
-    let level = if verbose {
-        log::LevelFilter::Debug
-    } else {
-        log::LevelFilter::Info
-    };
     let _ = log::set_logger(&Terminal).map(|()| log::set_max_level(level));
 }
 
@@ -609,7 +625,7 @@ fn load_or_create_seed(path: Option<&std::path::Path>) -> Result<[u8; 32], Strin
     }
     std::fs::write(&path, hex(&seed))
         .map_err(|error| format!("cannot write {}: {error}", path.display()))?;
-    println!("created a new identity at {}", path.display());
+    log::info!("created a new identity at {}", path.display());
     Ok(seed)
 }
 
@@ -778,7 +794,9 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
             "-allow" => options.allow.push(next_value(&mut arguments, "-allow")?),
             "-block" => options.block.push(next_value(&mut arguments, "-block")?),
             "-FPSdata" => options.fps_data = true,
-            "-d" => options.verbose = true,
+            "-d" => options.log_level = log::LevelFilter::Debug,
+            "-v" => options.log_level = log::LevelFilter::Info,
+            "-q" => options.log_level = log::LevelFilter::Error,
 
             // Options this receiver cannot honour are refused with the reason. A UxPlay
             // command that asks for HLS or for recording has to fail where the user can see
@@ -816,7 +834,12 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Option<Opt
             }
             "--ephemeral-seed" => options.ephemeral_seed = true,
             "--random-password" => options.random_password = true,
-            "--verbose" => options.verbose = true,
+            "--verbose" => options.log_level = log::LevelFilter::Info,
+            "--quiet" => options.log_level = log::LevelFilter::Error,
+            "--log-level" => {
+                let level = next_value(&mut arguments, "--log-level")?;
+                options.log_level = parse_level(&level)?;
+            }
             "--base-port" => {
                 options.base_port = Some(
                     next_value(&mut arguments, "--base-port")?
@@ -1023,6 +1046,23 @@ fn optional_value(
     }
 }
 
+/// Reads a log level by name.
+fn parse_level(name: &str) -> Result<log::LevelFilter, String> {
+    Ok(match name {
+        "off" => log::LevelFilter::Off,
+        "error" => log::LevelFilter::Error,
+        "warn" => log::LevelFilter::Warn,
+        "info" => log::LevelFilter::Info,
+        "debug" => log::LevelFilter::Debug,
+        "trace" => log::LevelFilter::Trace,
+        other => {
+            return Err(format!(
+                "--log-level: {other} is not a level (off, error, warn, info, debug, trace)"
+            ));
+        }
+    })
+}
+
 /// Reads a display the way upstream writes one: `1920x1080` or `1920x1080@60`.
 fn parse_display(text: &str) -> Result<(u64, u64, Option<f64>), String> {
     let (size, rate) = match text.split_once('@') {
@@ -1142,6 +1182,30 @@ mod tests {
         assert!(error.contains("not supported"), "{error}");
         let error = parse(&["-mp4", "out.mp4"]).expect_err("refused");
         assert!(error.contains("not supported"), "{error}");
+    }
+
+    #[test]
+    fn the_log_level_is_a_setting_and_warnings_are_the_default() {
+        // The device run showed that a receiver printing every media record is unreadable:
+        // the session's own lines are opt-in.
+        assert_eq!(Options::default().log_level, log::LevelFilter::Warn);
+        assert_eq!(
+            parse(&["-v"]).expect("parsed").log_level,
+            log::LevelFilter::Info
+        );
+        assert_eq!(
+            parse(&["-d"]).expect("parsed").log_level,
+            log::LevelFilter::Debug
+        );
+        assert_eq!(
+            parse(&["-q"]).expect("parsed").log_level,
+            log::LevelFilter::Error
+        );
+        assert_eq!(
+            parse(&["--log-level", "trace"]).expect("parsed").log_level,
+            log::LevelFilter::Trace
+        );
+        assert!(parse(&["--log-level", "loud"]).is_err());
     }
 
     #[test]
