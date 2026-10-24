@@ -1,5 +1,7 @@
 # parlor-cli
 
+[![CI](https://github.com/rust-airplay/parlor-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/rust-airplay/parlor-cli/actions/workflows/ci.yml)
+
 `parlor`：命令行上的 AirPlay 接收端。
 
 它是程序，不是协议。接收端本身是 [`rust-airplay`](https://github.com/rust-airplay/rust-airplay)，播放由 [`rust-airplay-gstream`](https://github.com/rust-airplay/rust-airplay-gstream) 负责；这个 crate 解析参数、保存两个文件、安装 logger 并打印。它不含任何协议代码。
@@ -111,6 +113,11 @@ cargo clippy --all-targets --features gst -- -D warnings
 ```
 
 测试解析命令行：参数名、端口布局、可选值、以及对无效值的拒绝。它们不需要 GStreamer。
+
+## 发布
+
+`Release` 工作流手动触发，有三个输入：形如 `v0.2.0` 的 tag、发布说明（换行用 `
+`）、以及是否创建草稿。它使用 GStreamer 后端为 Linux 与 Windows 构建 `parlor`，把二进制、两个 README 与许可证打包，并创建 GitHub release。Windows 构建使用与 MSYS2 GStreamer 库匹配的 GNU 工具链；两个压缩包都要求运行机器安装 GStreamer 1.0 及基础插件。
 
 ## 文档
 
