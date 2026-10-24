@@ -22,10 +22,10 @@ default = []
 gst = ["dep:rust-airplay-gstream", "tokio/sync", "tokio/signal"]
 
 [dependencies]
-# The core library: protocol, decryption and framing.
-rust-airplay = { git = "https://github.com/rust-airplay/rust-airplay", branch = "main" }
+# The core library and the playback backend, both published on crates.io.
+rust-airplay = "0.2"
 # The playback backend, only with `--features gst`.
-rust-airplay-gstream = { git = "https://github.com/rust-airplay/rust-airplay-gstream", branch = "main", optional = true }
+rust-airplay-gstream = { version = "0.2", optional = true }
 getrandom = "0.2"
 log = "0.4"
 tokio = { version = "1.53.2", default-features = false, features = ["rt-multi-thread", "macros"] }
