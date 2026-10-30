@@ -1,5 +1,102 @@
 # Changelog
 
+## 0.3.0 - 2026-10-30
+
+The command line is audited, the program is split into a library and a thin entry point, and
+both dependencies move to 0.3. Two changes are breaking: the dependency line, and the exit code
+an unacceptable command line earns.
+
+### Added
+
+- `--version` and `-V` print the version and exit successfully.
+- `--bind <addr>` names the address to listen on, IPv4 or IPv6; the default is still every
+  interface.
+- `--no-advertise` starts a receiver that is not announced over mDNS.
+- `--password-file <path|->` reads the SETUP password from a file, or from standard input for
+  `-`; `--seed-file <path>` reads the identity seed from a file.
+- `--data-dir <path>` names the directory the identity and the client list live in.
+- `--pin` and `--quiet` are in the usage text. Both worked; neither was listed.
+- Exit codes: 0 for a successful run, 1 for a run that could not start or that failed, 2 for a
+  command line this program cannot accept.
+- The program is a library: `[lib] name = "parlor"`, with the command line, the plan, the
+  files, the console and the renderer in `cli`, `plan`, `files`, `console` and `render`.
+  `src/main.rs` is the entry point only.
+- 33 unit tests, and seven integration tests in `tests/cli.rs` that run the built binary
+  through `CARGO_BIN_EXE_parlor`.
+
+### Changed
+
+- **Breaking.** Both dependencies move from the 0.2 line to the published 0.3 releases:
+  `rust-airplay` 0.3 and `rust-airplay-gstream` 0.3. A build pinned to 0.2 has to move with
+  them.
+- **Breaking.** A command line this program cannot accept exits 2, where it used to exit 1, so
+  a script can tell `fix the command line` from `look at the receiver`.
+- Contradictory options are errors rather than a silent choice: the identity is one of
+  `--seed`, `--seed-file`, `-key <file>` and `-key`/`--ephemeral-seed`; `-h265` and
+  `--features` cannot both set the advertised features; `-pw`, `--password` and
+  `--random-password` cannot be combined with `--password-file`; `-p <base>` cannot be
+  combined with `--port` or with a single media port.
+- Device identifiers given to `-allow` and `-block` are normalised to twelve upper-case
+  hexadecimal digits, so a colon- or dash-separated address names the same device as a bare
+  one, and anything else is refused instead of matching nothing.
+- `-allow` without `-restrict` turns `-restrict` on and prints a warning, because the library
+  would otherwise ignore the list.
+- `-ca` without a path reports the cover art's content type and byte count on standard error
+  instead of doing nothing.
+- `-h265` enlarges the default display to 4K only when no size was stated;
+  `-h265 -s 1920x1080` keeps 1080p.
+- All log output goes to standard error. Standard output keeps the banner, the PIN and a drawn
+  password.
+- The identity seed is created readable by its owner alone (0600) on Unix, and only when it
+  does not exist: a seed that exists and cannot be read is an error, not a new identity.
+- A client is appended to the client list only when it is new, so a client that reconnects
+  does not grow the file. `-key` without a file keeps the registry in memory unless `-reg`
+  names a file.
+- An option that takes a value no longer swallows the option after it: `-n -p 7000`,
+  `-allow -restrict` and `-md -q` report that a value is needed. Numeric options still accept
+  a value that begins with a dash, so `-db -30:0` is a range.
+
+### Fixed
+
+- NaN and infinity are refused by `-vol`, `-al`, `--volume`, `--audio-latency` and `-reset`.
+  They used to pass a range check and become a value nobody asked for.
+- `-s` is bounded like the other size options: at most 16384 pixels each way and a refresh
+  rate of 1 to 240. It used to accept any size at all.
+- `-reset` is bounded at 86400 seconds, so a value too large for a `Duration` is refused
+  instead of reaching it.
+- A seed that is not hexadecimal - including one whose bytes are not ASCII - is reported
+  instead of panicking on a slice boundary.
+- A closed standard output no longer stops the program: every write is allowed to fail.
+
+### Performance
+
+- Everything a client can cause to be written goes through one writer thread with a bounded
+  queue of 16, so a disk write no longer runs on the async runtime. A full queue drops the
+  write and says so instead of holding up the session.
+
+### Security
+
+- Client-controlled now-playing text is stripped of control characters, kept to one line and
+  cut at 2 KiB before it reaches the console.
+- Cover art over 4 MiB, metadata over 256 KiB and a remote-control export over 4 KiB are
+  dropped rather than written.
+- The identity seed is created with 0600 permissions on Unix, and an unreadable one stops the
+  run instead of being replaced.
+- A 64 character hexadecimal token in a log record - an identity seed or a client key - is
+  replaced with `<redacted>` before it reaches the console. The library reports its identity at
+  the info level, and one verbose session would otherwise hand over the secret a receiver is
+  recognised by.
+- Known limitation, documented in the README: with `-ca`, `-md` or `-dacp`, a `SET_PARAMETER`
+  request from an unauthenticated host on the local network can still cause a file to be
+  written and a line to be printed. The bounds above limit what it can do; authenticating the
+  request needs a change in the library.
+
+### Runtime notes
+
+- A build with the `gst` feature needs GStreamer 1.0 and its base plugins on the machine that
+  runs it; without the feature it needs no media library.
+- The migration steps from 0.2.0 are in `MIGRATION.md`.
+
 ## 0.2.0 - 2026-10-24
 
 The first release of `parlor`, the command-line AirPlay receiver.

@@ -43,14 +43,63 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
+      # The default configuration is the one a machine without GStreamer builds, so both
+      # platforms run its tests; the backend is checked where it can be installed.
       - name: Run the tests
-        run: cargo test
+        run: cargo test --locked
 
       - name: Run clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Run the tests with the GStreamer backend (Linux)
+        if: runner.os == 'Linux'
+        run: cargo test --locked --features gst
+
+      - name: Run clippy with the GStreamer backend (Linux)
+        if: runner.os == 'Linux'
+        run: cargo clippy --all-targets --locked --features gst -- -D warnings
 
       # The optional feature is what a release is built with, so Linux checks that it
-      # compiles. Windows runs the default configuration, which is also a supported one.
+      # builds as a release too.
       - name: Build with the GStreamer backend (Linux)
         if: runner.os == 'Linux'
-        run: cargo build --release --features gst
+        run: cargo build --release --locked --features gst
+
+  # The version in Cargo.toml is a promise; this is the job that keeps it.
+  msrv:
+    name: rust 1.85
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Install the oldest supported Rust
+        uses: dtolnay/rust-toolchain@1.85.0
+
+      - name: Cache the build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check the crate builds on the declared version
+        run: cargo check --locked --all-targets
+
+  # Releases are built for x86_64-pc-windows-gnu, which is not the host default on the
+  # runner the other jobs use; this job compiles that target on every change.
+  windows-gnu:
+    name: windows-gnu check
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Install the GNU toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu
+
+      - name: Cache the build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check the release target
+        run: cargo check --locked --target x86_64-pc-windows-gnu

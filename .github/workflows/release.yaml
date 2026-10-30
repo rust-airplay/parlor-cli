@@ -120,10 +120,10 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run the tests
-        run: cargo test
+        run: cargo test --locked
 
       - name: Build the binary
-        run: cargo build --release --features gst
+        run: cargo build --release --locked --features gst
 
       - name: Package the release
         run: |
@@ -137,6 +137,18 @@ jobs:
           else
             cp target/release/parlor.exe dist/
             files=(parlor.exe README.md LICENSE)
+            # A GNU target links against its own runtime, and a machine with none of it
+            # installed cannot start the program; the DLLs travel with the archive.
+            msys2="${{ steps.msys2.outputs.msys2-location }}"
+            if [ -z "${msys2:-}" ]; then
+              msys2=/c/msys64
+            fi
+            for runtime in libgcc_s_seh-1.dll libstdc++-6.dll libwinpthread-1.dll; do
+              if [ -f "${msys2}/ucrt64/bin/${runtime}" ]; then
+                cp "${msys2}/ucrt64/bin/${runtime}" dist/
+                files+=("${runtime}")
+              fi
+            done
             sevenzip="/c/Program Files/7-Zip/7z.exe"
             if [ ! -x "$sevenzip" ]; then
               sevenzip=7z
