@@ -8,6 +8,8 @@
 
 运行逻辑本身是一个名为 `parlor` 的库，别的程序不必经过二进制就能启动接收端；`src/main.rs` 只负责转交。组成部分是：`src/cli.rs` 的命令行、`src/plan.rs` 对命令行的解释、`src/files.rs` 的文件与写入线程、`src/console.rs` 的标题与日志、以及 `src/render.rs` 的后端。
 
+第一次使用？[使用指南](GUIDE.zh-CN.md)会一步步带过安装、GStreamer 与首次配对。
+
 **目录：**[依赖要求](#依赖要求) - [构建](#构建) - [运行](#运行) - [控制台](#控制台) - [参数](#参数) - [退出码](#退出码) - [文件](#文件) - [延迟](#延迟) - [排查一次投屏](#排查一次投屏) - [已知限制](#已知限制) - [测试](#测试) - [发布](#发布) - [文档](#文档)
 
 ## 依赖要求
@@ -237,17 +239,18 @@ cargo fmt --all -- --check
 cargo clippy --all-targets --features gst -- -D warnings
 ```
 
-`src/` 里有 33 个单元测试：解析器、显示与端口计划、种子与文件写入、以及控制台的可打印文本。`tests/cli.rs` 有 7 个集成测试，通过 `CARGO_BIN_EXE_parlor` 运行构建出的二进制：退出码、`--help` 里的参数清单、`--version`、非十六进制的种子、被关闭的输出管道、本构建没有的后端，以及一个真正启动并保住身份的接收端。其中请求 GStreamer 后端的那个只在没有该 feature 的构建里运行，所以 `cargo test --features gst` 会跑 6 个。所有测试都不需要 GStreamer。
+`src/` 里有 34 个单元测试：解析器、显示与端口计划、种子与文件写入、控制台的可打印文本，以及日志里密钥的脱敏。`tests/cli.rs` 有 7 个集成测试，通过 `CARGO_BIN_EXE_parlor` 运行构建出的二进制：退出码、`--help` 里的参数清单、`--version`、非十六进制的种子、被关闭的输出管道、本构建没有的后端，以及一个真正启动并保住身份的接收端。其中请求 GStreamer 后端的那个只在没有该 feature 的构建里运行，所以 `cargo test --features gst` 会跑 6 个。所有测试都不需要 GStreamer。
 
 ## 发布
 
-`Release` 工作流手动触发，有三个输入：形如 `v0.3.1` 的 tag（缺少 `v` 会自动补上）、发布说明（留空则使用 `RELEASE_NOTES.md`，否则换行用 `\n`）、以及是否创建草稿。它使用 GStreamer 后端为 Linux 与 Windows 构建 `parlor`，把二进制、README 与许可证打包，并创建 GitHub release。Windows 构建使用与 MSYS2 GStreamer 库匹配的 GNU 工具链；两个压缩包都要求运行机器安装 GStreamer 1.0 及基础插件。
+`Release` 工作流手动触发，有三个输入：形如 `v0.3.2` 的 tag（缺少 `v` 会自动补上）、发布说明（留空则使用 `RELEASE_NOTES.md`，否则换行用 `\n`）、以及是否创建草稿。它使用 GStreamer 后端为 Linux 与 Windows 构建 `parlor`，把二进制、README 与许可证打包，并创建 GitHub release。Windows 构建使用与 MSYS2 GStreamer 库匹配的 GNU 工具链；两个压缩包都要求运行机器安装 GStreamer 1.0 及基础插件。
 
 ## 文档
 
 - [rust-airplay 的 API](https://docs.rs/rust-airplay)：`Config`、渲染器 trait、各模块
 - [rust-airplay 的后端指南](https://github.com/rust-airplay/rust-airplay/blob/main/docs/BACKEND.md)：如何实现播放后端
 - [rust-airplay-gstream 的 README](https://github.com/rust-airplay/rust-airplay-gstream)：播放路径的 sink、元素与行为
+- [GUIDE.zh-CN.md](GUIDE.zh-CN.md)：安装、GStreamer、全部参数、故障排查
 - [CHANGELOG.md](CHANGELOG.md)：每个版本包含什么
 - [MIGRATION.zh-CN.md](MIGRATION.zh-CN.md)：版本之间变了什么，需要做什么
 

@@ -14,6 +14,8 @@ through the binary; `src/main.rs` only hands over to it. The pieces are the comm
 `src/cli.rs`, the meaning of a command line in `src/plan.rs`, the files and their writer in
 `src/files.rs`, the banner and the log in `src/console.rs`, and the backend in `src/render.rs`.
 
+New here? The [user guide](GUIDE.md) walks through installation, GStreamer and the first pairing.
+
 **Contents:** [Requirements](#requirements) - [Building](#building) - [Running](#running) -
 [The console](#the-console) - [Options](#options) - [Exit codes](#exit-codes) - [Files](#files) -
 [Latency](#latency) - [Diagnosing a mirror](#diagnosing-a-mirror) -
@@ -320,7 +322,7 @@ cargo fmt --all -- --check
 cargo clippy --all-targets --features gst -- -D warnings
 ```
 
-`src/` holds 33 unit tests: the parser, the display and port plans, the seed and the file
+`src/` holds 34 unit tests: the parser, the display and port plans, the seed and the file
 writer, the console's printable text, and the redaction of a secret in a log record. `tests/cli.rs` holds seven integration tests that run
 the built binary through `CARGO_BIN_EXE_parlor`: the exit codes, the option list in `--help`,
 `--version`, a seed that is not hexadecimal, a closed output pipe, a backend this build does
@@ -330,7 +332,7 @@ six of them. None of the tests need GStreamer.
 
 ## Releasing
 
-The `Release` workflow is started by hand with three inputs: a tag such as `v0.3.1` (a
+The `Release` workflow is started by hand with three inputs: a tag such as `v0.3.2` (a
 missing `v` is added), the release notes (leave empty to use `RELEASE_NOTES.md`; otherwise use
 `\n` for a line break), and whether the release is a draft. It builds `parlor` for Linux and
 Windows with the GStreamer backend, packs the binary with the README and the licence, and
@@ -345,6 +347,7 @@ runs them.
   how a playback backend is written
 - [rust-airplay-gstream's README](https://github.com/rust-airplay/rust-airplay-gstream): sinks,
   elements and behaviour of the playback path
+- [GUIDE.md](GUIDE.md): installing, GStreamer, every option, troubleshooting
 - [CHANGELOG.md](CHANGELOG.md): what each release contains
 - [MIGRATION.md](MIGRATION.md): what changed between releases, and what to do about it
 

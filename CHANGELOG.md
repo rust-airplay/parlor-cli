@@ -28,6 +28,10 @@ them as such.
 
 ### Documented
 
+- A **user guide** in English and Chinese (`GUIDE.md`, `GUIDE.zh-CN.md`): installing from
+  an archive or from source, GStreamer on Windows and Linux with the plugins this program
+  actually uses, the first pairing, every option grouped by what it is for, recipes,
+  troubleshooting, and the security notes. The README links to it.
 - Requirements say what the git dependencies are for, and how the first build behaves.
 - The diagnosis table's frozen-picture row now points at the fix rather than at a reconnect.
 
