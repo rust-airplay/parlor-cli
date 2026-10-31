@@ -306,11 +306,11 @@ pub struct Options {
     pub display: DisplayOptions,
     /// Whether this program paces the mirror stream itself.
     ///
-    /// On by default, and that is a fix rather than a preference: with pacing off the
-    /// library tells the backend the arrival interval of every frame, and the backend
-    /// sleeps it before writing. That makes the renderer permanently a little slower than
-    /// the stream, so its queue never drains - 8 frames and a quarter of a second of lag
-    /// on a 30 fps mirror, and a dropped frame whenever the two drift.
+    /// Off by default: frames then go to the renderer as fast as it takes them, which is
+    /// the shortest path from the device to the screen. On, each frame is held back to the
+    /// spacing it was captured at, which spends a little latency to smooth a stream that
+    /// arrives in bursts. 0.3.0's receiver did the pacing in the backend and drifted behind
+    /// the stream forever; 0.3.1 leaves the choice here, where it belongs.
     pub pace_video: bool,
     /// The directory this program keeps its files in, when the caller named one.
     pub data_dir: Option<PathBuf>,
@@ -358,9 +358,9 @@ impl Default for Options {
             volume: 1.0,
             fps_data: false,
             display: DisplayOptions::default(),
-            // Pacing here is what keeps the renderer's queue empty; see the field's own
-            // documentation for why the other way round leaves a session behind.
-            pace_video: true,
+            // Frames go out as fast as the renderer takes them; -pace-video trades a
+            // little latency for smoothness on a stream that arrives in bursts.
+            pace_video: false,
             data_dir: None,
             warnings: Vec::new(),
         }
@@ -1413,10 +1413,10 @@ mod tests {
     }
 
     #[test]
-    fn the_picture_is_paced_by_default_and_can_be_turned_off() {
-        // Pacing here keeps the renderer's queue empty; leaving it to the backend is what
-        // made a 30 fps mirror sit a whole queue behind and drop frames.
-        assert!(Options::default().pace_video);
+    fn the_picture_is_not_paced_unless_asked_for() {
+        // Off is the shortest path from device to screen; --pace-video spends a little
+        // latency to smooth a stream that arrives in bursts.
+        assert!(!Options::default().pace_video);
         assert!(options(&["--pace-video"]).pace_video);
         assert!(!options(&["--no-pace-video"]).pace_video);
     }

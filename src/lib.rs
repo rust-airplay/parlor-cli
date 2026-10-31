@@ -174,14 +174,9 @@ async fn run(options: Options) -> Result<(), Error> {
         }
     }
 
-    if !options.pace_video {
-        // The other way round is not neutral: the library then reports every frame's
-        // arrival interval to the backend, which sleeps it before writing, and a renderer
-        // that is slower than the stream by one frame interval keeps its queue full.
-        log::warn!(
-            "--no-pace-video leaves the pacing to the backend, which sleeps a frame interval \
-             before writing: expect a full frame queue and dropped frames"
-        );
+    if options.pace_video {
+        // Worth one line, because it is the one setting that deliberately spends latency.
+        log::info!("pacing    on: frames are held to their capture spacing, at most 40 ms each");
     }
 
     let mut outputs = files::Outputs::new(&options)?;

@@ -2,8 +2,22 @@
 
 中文见 [MIGRATION.zh-CN.md](MIGRATION.zh-CN.md)。
 
-Two migrations are described here: the split of this program out of the library's workspace,
-which made it 0.2.0, and the command line changes of 0.3.0.
+Three migrations are described here: the split of this program out of the library's workspace,
+which made it 0.2.0, the command line changes of 0.3.0, and the library fix of 0.3.1.
+
+## 0.3.0 to 0.3.1
+
+Nothing to change in a configuration; this release is about the libraries underneath.
+
+1. **Move the dependencies to 0.3.1.** `rust-airplay` and `rust-airplay-gstream` 0.3.0 carry a
+   pacing defect: the receiver reported each frame's arrival interval to the backend, which
+   slept that interval before writing, so the renderer ran permanently behind the stream and its
+   frame queue never drained. A mirror on 0.3.0 stutters, and no option fixes it.
+2. **Drop `--pace-video` from a command line that only carried it as a workaround.** It is off
+   by default again, which is the shortest path from the device to the screen. It is still
+   useful for a stream that arrives in bursts; it costs at most 40 ms a frame.
+3. **Nothing else changes.** The option set, the exit codes, the files and their formats are the
+   same as 0.3.0.
 
 ## 0.2.0 to 0.3.0
 

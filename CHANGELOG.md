@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.3.1 - 2026-10-31
+
+Follows both libraries to 0.3.1, whose release fixes the defect that made every mirror stutter,
+and withdraws the workaround this program carried for it.
+
+### Changed
+
+- `rust-airplay` and `rust-airplay-gstream` move to **0.3.1**. 0.3.0's receiver reported every
+  frame's arrival interval to the backend, and the backend slept that interval before writing:
+  the renderer therefore ran a fraction of a frame behind the stream forever, its eight frame
+  queue never drained, and frames were dropped on any jitter - about a quarter of a second of
+  added latency and a broken H.264 reference chain.
+- **Breaking for behaviour.** The picture is no longer paced by this program by default.
+  `--pace-video` is off unless asked for, which is the shortest path from the device to the
+  screen; it spends a little latency (at most 40 ms per frame) to smooth a stream that arrives
+  in bursts. 0.3.0 turned it on because the alternative could not keep up. `--no-pace-video`
+  still names the default explicitly.
+- A run with `--pace-video` says so at startup; the warning that used to accompany
+  `--no-pace-video` is gone, because the defect it described no longer exists.
+
+### Documented
+
+- A Requirements section: Rust 1.85 to build, GStreamer 1.0 for the `gst` feature, and 0.3.1
+  or newer of both libraries.
+- A Diagnosing a mirror section: the four lines `-v` prints, and what each answer means.
+- The README gains a contents list; every version string says 0.3.1.
+
+### Verified
+
+- `rust-airplay` 0.3.1: 308 tests passed, 6 ignored, 0 failed.
+- `rust-airplay-gstream` 0.3.1: 23 tests passed, 0 failed.
+- This crate: 34 unit and 7 integration tests, `cargo fmt --check`, and clippy with and without
+  the `gst` feature, all clean.
+
 ## 0.3.0 - 2026-10-30
 
 The command line is audited, the program is split into a library and a thin entry point, and

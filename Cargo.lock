@@ -737,7 +737,7 @@ dependencies = [
 
 [[package]]
 name = "parlor-cli"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "getrandom",
  "log",
@@ -851,9 +851,9 @@ dependencies = [
 
 [[package]]
 name = "rust-airplay"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc168384e10492c12acf1d0fdc6a766553f43abdf63e0656dfd6f937fc518753"
+checksum = "9227074fdfd997c643361b4d32d88e4fd4baed2fc3ceb75ba803ad2946e10585"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -876,9 +876,9 @@ dependencies = [
 
 [[package]]
 name = "rust-airplay-gstream"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e90b62a437504cded26ed7cd76483031dda4b492733a8e5f2da48d5a47fbc19e"
+checksum = "3fd2a1b2b9966564eec297e97de6564406c24ab02cbde4ea2bea7ca749a447d6"
 dependencies = [
  "gstreamer",
  "gstreamer-app",

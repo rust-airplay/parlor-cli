@@ -4,7 +4,7 @@ description = "parlor: an AirPlay receiver on the command line"
 repository = "https://github.com/rust-airplay/parlor-cli"
 homepage = "https://github.com/rust-airplay/parlor-cli"
 readme = "README.md"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 rust-version = "1.85"
 license = "GPL-3.0-or-later"
@@ -27,9 +27,9 @@ gst = ["dep:rust-airplay-gstream"]
 
 [dependencies]
 # The core library and the playback backend, both published on crates.io.
-rust-airplay = "0.3"
+rust-airplay = "0.3.1"
 # The playback backend, only with the gst feature.
-rust-airplay-gstream = { version = "0.3", optional = true }
+rust-airplay-gstream = { version = "0.3.1", optional = true }
 getrandom = "0.2"
 log = "0.4"
 tokio = { version = "1.53.2", default-features = false, features = ["rt-multi-thread", "macros"] }

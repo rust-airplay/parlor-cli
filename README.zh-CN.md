@@ -8,6 +8,14 @@
 
 运行逻辑本身是一个名为 `parlor` 的库，别的程序不必经过二进制就能启动接收端；`src/main.rs` 只负责转交。组成部分是：`src/cli.rs` 的命令行、`src/plan.rs` 对命令行的解释、`src/files.rs` 的文件与写入线程、`src/console.rs` 的标题与日志、以及 `src/render.rs` 的后端。
 
+**目录：**[依赖要求](#依赖要求) - [构建](#构建) - [运行](#运行) - [控制台](#控制台) - [参数](#参数) - [退出码](#退出码) - [文件](#文件) - [延迟](#延迟) - [排查一次投屏](#排查一次投屏) - [已知限制](#已知限制) - [测试](#测试) - [发布](#发布) - [文档](#文档)
+
+## 依赖要求
+
+- 构建需要 Rust 1.85 或更新；CI 里有一项专门验证这个最低版本。
+- `--features gst` 需要 GStreamer 1.0 及其基础插件：构建要开发文件，运行要运行时与插件。不带该 feature 的构建不需要任何媒体库。
+- `rust-airplay` 与 `rust-airplay-gstream` 需要 **0.3.1 或更新**。0.3.0 有一处节拍缺陷，会让每一次投屏都落后一个帧队列并丢帧；见[延迟](#延迟)。
+
 ## 构建
 
 ```sh
@@ -28,7 +36,7 @@ parlor -n "Living room" -pin 1234
 程序打印一段简短标题后等待：
 
 ```
-parlor 0.3.0 - an AirPlay receiver
+parlor 0.3.1 - an AirPlay receiver
 
   Name      Living room
   Port      7000
@@ -102,8 +110,8 @@ Waiting for a client. Press Ctrl+C to stop.
 | `--video-decoder-hevc <decoder>` | H.265 镜像流使用的解码器 |
 | `-avdec` | 强制使用软件解码器 |
 | `--warm-video` | 在第一个客户端之前启动视频管线 |
-| `--pace-video` | 由本程序而不是后端来节拍镜像帧（默认） |
-| `--no-pace-video` | 交给后端节拍；代价是整个帧队列被占满 |
+| `--pace-video` | 让镜像帧按采集间隔输出；默认关闭，每帧最多花 40 ms |
+| `--no-pace-video` | 显式写出默认行为：帧以渲染器能吃下的速度送出 |
 | `--render <backend>` | 用什么播放：`null` 或 `gst` |
 | `--audio-codec <coding>` | 会话回退的编码：`alac` 或 `aac-eld` |
 | `-ca [file]`、`--cover-art [file]` | 把封面图的类型与大小报告到标准错误，或写入文件 |
@@ -168,18 +176,15 @@ Waiting for a client. Press Ctrl+C to stop.
 
 ## 延迟
 
-投屏看的是画面跟手的快慢，而它会被两件互不相同的事吃掉。
+投屏看的是画面跟手的快慢。有两点会吃掉它，值得分开说。
 
-**排不空的队列。** 把节拍交给后端时，库会把每帧的到达间隔告诉渲染器，渲染器在写之前先睡掉这个间隔。于是渲染器永远比流慢一点点，那 8 帧的队列也就永远排不空：30 fps 的镜像上约四分之一秒的延迟，而且两边一有漂移就丢帧——H.264 的参考链随之断裂。本程序改为自己节拍，队列会排到 1 帧；这是默认行为，也是 `--no-pace-video` 会打警告的原因。`-v` 会把两半都显示出来：
+**渲染器的队列。** 帧以渲染器能吃下的速度送过去：本程序默认不压节拍，跟得上的渲染器会让队列保持空——这是从设备到屏幕最短的路径。
 
-```text
-media     pace frame 12: queued 3 ms, pacer wanted 31 ms, waited 0 ms
-media     400 video frames queued, 1 waiting
-```
+队列容量是 8 帧。真被填满时（渲染器跟不上，或流以突发方式到达），`rust-airplay` 0.3.1 会清空队列并等待下一个关键帧，而不是丢掉一个帧组里的某一帧。后一帧要引用前一帧，丢一帧就等于损坏画面，所以"落后"的代价是一次短暂冻结，而不是持续花屏。
 
-`8 waiting`（队列上限）加上几百毫秒的 `queued`，就是渲染器跟不上；`1 waiting` 且只有几毫秒，才是健康的会话。
+`--pace-video` 是这条取舍的另一端：把每帧按采集间隔压住，每帧最多 40 ms。它花一点延迟来抹平突发到达的流；流本来就均匀时，它不起任何作用。
 
-**不是硬件的解码器。** 0.3 起 sink 与解码器是两个独立选择，`-vs d3d11videosink` 不再顺带换掉解码器。只指定硬件 sink、不指定解码器时，每帧都由 CPU 解（`avdec_h264`），余量更小——画面一忙，就会表现成上面那个满队列。
+**解码器。** 0.3 起 sink 与解码器是两个独立选择，`-vs d3d11videosink` 不再顺带换掉解码器。只指定硬件 sink、不指定解码器时，每帧都由 CPU 解（`avdec_h264`），余量更小——画面一忙，就表现成上面那个被填满的队列。
 
 ```sh
 parlor -vs d3d11videosink -vd d3d11h264dec
@@ -192,6 +197,27 @@ parlor -h265 -vs d3d11videosink -vd d3d11h264dec --video-decoder-hevc d3d11h265d
 ```
 
 没有给 `-vd` 时启动会打印一条警告。
+
+## 排查一次投屏
+
+`-v` 会把接收端对自己这路流的判断打印出来。四行足以回答大部分问题：
+
+```text
+render    h264   fdsrc ! h264parse ! d3d11h264dec ! d3d11videosink sync=false
+media     mirror: 308 packets, 3946087 bytes in, 297 received, 297 written, 1 waiting, 0 dropped
+media     mirror summary: 1204 received, 1204 written, 0 waiting, 0 dropped
+media     pace frame 12: queued 3 ms, pacer wanted 31 ms, waited 0 ms
+```
+
+| 日志 | 含义 | 该怎么办 |
+| --- | --- | --- |
+| `received` 与 `written` 跟得上、`waiting` 0 或 1、`dropped` 0 | 健康 | 不用处理 |
+| `waiting` 到 8、`dropped` 持续增长 | 渲染器跟不上 | 用 `-vd` 指定硬件解码器；或用 `-s 1280x720` 要更小的画面；或降低 `-fps` |
+| `queued` 达到几百毫秒 | 帧在队列里等渲染器 | 同上 |
+| 管线行里出现 `avdec_h264` | 视频在用 CPU 解 | 用 `-vd d3d11h264dec`，或这台机器上的硬件解码器 |
+| `the renderer fell behind` | 队列已被清空，正在丢帧直到下一个关键帧 | 同上 |
+
+`-FPSdata` 会额外打印客户端自己上报的流报告——那是接收端唯一无法自己测量的东西。
 
 ## 已知限制
 
@@ -210,7 +236,7 @@ cargo clippy --all-targets --features gst -- -D warnings
 
 ## 发布
 
-`Release` 工作流手动触发，有三个输入：形如 `v0.3.0` 的 tag（缺少 `v` 会自动补上）、发布说明（留空则使用 `RELEASE_NOTES.md`，否则换行用 `\n`）、以及是否创建草稿。它使用 GStreamer 后端为 Linux 与 Windows 构建 `parlor`，把二进制、README 与许可证打包，并创建 GitHub release。Windows 构建使用与 MSYS2 GStreamer 库匹配的 GNU 工具链；两个压缩包都要求运行机器安装 GStreamer 1.0 及基础插件。
+`Release` 工作流手动触发，有三个输入：形如 `v0.3.1` 的 tag（缺少 `v` 会自动补上）、发布说明（留空则使用 `RELEASE_NOTES.md`，否则换行用 `\n`）、以及是否创建草稿。它使用 GStreamer 后端为 Linux 与 Windows 构建 `parlor`，把二进制、README 与许可证打包，并创建 GitHub release。Windows 构建使用与 MSYS2 GStreamer 库匹配的 GNU 工具链；两个压缩包都要求运行机器安装 GStreamer 1.0 及基础插件。
 
 ## 文档
 
