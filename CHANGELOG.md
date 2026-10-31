@@ -1,5 +1,185 @@
 # Changelog
 
+## 0.3.2 - 2026-10-31
+
+Pins the two libraries to git revisions that carry the fix for a frozen mirror, and names
+them as such.
+
+### Changed
+
+- `rust-airplay` moves to the revision of its **0.3.2** release and `rust-airplay-gstream`
+  to the revision of its **0.3.1**, both as git dependencies with a fixed `rev`. The
+  releases this program needs are ahead of crates.io, and a version requirement would have
+  resolved to the broken ones.
+- A `[patch.crates-io]` block redirects the backend's own `rust-airplay` requirement to the
+  same revision. Without it, cargo would build the git revision for this crate and a
+  published one for the backend, and the two would not share types.
+- The first build now clones the two libraries; `--locked` pins the graph as tested.
+
+### Fixed
+
+- **A frozen picture after one queue overflow.** rust-airplay 0.3.1 cleared the frame queue
+  and waited for a key frame with no timeout; an AirPlay client only sends one when its
+  picture changes, so a mostly still screen never sent another. A measured session wrote 208
+  frames and then dropped 240 while the client kept sending - the picture stayed on screen
+  and the pointer stopped following. 0.3.2 bounds that wait at one second and raises the
+  startup allowance to 120 frames or two seconds, so an overflow costs a moment of
+  corruption instead of the rest of the session.
+
+### Documented
+
+- A **user guide** in English and Chinese (`GUIDE.md`, `GUIDE.zh-CN.md`): installing from
+  an archive or from source, GStreamer on Windows and Linux with the plugins this program
+  actually uses, the first pairing, every option grouped by what it is for, recipes,
+  troubleshooting, and the security notes. The README links to it.
+- Requirements say what the git dependencies are for, and how the first build behaves.
+- The diagnosis table's frozen-picture row now points at the fix rather than at a reconnect.
+
+## 0.3.1 - 2026-10-31
+
+Follows both libraries to 0.3.1, whose release fixes the defect that made every mirror stutter,
+and withdraws the workaround this program carried for it.
+
+### Changed
+
+- `rust-airplay` and `rust-airplay-gstream` move to **0.3.1**. 0.3.0's receiver reported every
+  frame's arrival interval to the backend, and the backend slept that interval before writing:
+  the renderer therefore ran a fraction of a frame behind the stream forever, its eight frame
+  queue never drained, and frames were dropped on any jitter - about a quarter of a second of
+  added latency and a broken H.264 reference chain.
+- **Breaking for behaviour.** The picture is no longer paced by this program by default.
+  `--pace-video` is off unless asked for, which is the shortest path from the device to the
+  screen; it spends a little latency (at most 40 ms per frame) to smooth a stream that arrives
+  in bursts. 0.3.0 turned it on because the alternative could not keep up. `--no-pace-video`
+  still names the default explicitly.
+- A run with `--pace-video` says so at startup; the warning that used to accompany
+  `--no-pace-video` is gone, because the defect it described no longer exists.
+
+### Documented
+
+- A Requirements section: Rust 1.85 to build, GStreamer 1.0 for the `gst` feature, and 0.3.1
+  or newer of both libraries.
+- A Diagnosing a mirror section: the four lines `-v` prints, and what each answer means.
+- The README gains a contents list; every version string says 0.3.1.
+
+### Verified
+
+- `rust-airplay` 0.3.1: 308 tests passed, 6 ignored, 0 failed.
+- `rust-airplay-gstream` 0.3.1: 23 tests passed, 0 failed.
+- This crate: 34 unit and 7 integration tests, `cargo fmt --check`, and clippy with and without
+  the `gst` feature, all clean.
+
+## 0.3.0 - 2026-10-30
+
+The command line is audited, the program is split into a library and a thin entry point, and
+both dependencies move to 0.3. Two changes are breaking: the dependency line, and the exit code
+an unacceptable command line earns.
+
+### Added
+
+- `--version` and `-V` print the version and exit successfully.
+- `--bind <addr>` names the address to listen on, IPv4 or IPv6; the default is still every
+  interface.
+- `--no-advertise` starts a receiver that is not announced over mDNS.
+- `--password-file <path|->` reads the SETUP password from a file, or from standard input for
+  `-`; `--seed-file <path>` reads the identity seed from a file.
+- `--data-dir <path>` names the directory the identity and the client list live in.
+- `--video-decoder-hevc <decoder>` names the decoder for an H.265 stream. `-vd` names the
+  H.264 one, and since the 0.3 backend a sink no longer brings a decoder with it.
+- `--pin` and `--quiet` are in the usage text. Both worked; neither was listed.
+- Exit codes: 0 for a successful run, 1 for a run that could not start or that failed, 2 for a
+  command line this program cannot accept.
+- The program is a library: `[lib] name = "parlor"`, with the command line, the plan, the
+  files, the console and the renderer in `cli`, `plan`, `files`, `console` and `render`.
+  `src/main.rs` is the entry point only.
+- 33 unit tests, and seven integration tests in `tests/cli.rs` that run the built binary
+  through `CARGO_BIN_EXE_parlor`.
+
+### Changed
+
+- **Breaking.** Both dependencies move from the 0.2 line to the published 0.3 releases:
+  `rust-airplay` 0.3 and `rust-airplay-gstream` 0.3. A build pinned to 0.2 has to move with
+  them.
+- **Breaking.** A command line this program cannot accept exits 2, where it used to exit 1, so
+  a script can tell `fix the command line` from `look at the receiver`.
+- Contradictory options are errors rather than a silent choice: the identity is one of
+  `--seed`, `--seed-file`, `-key <file>` and `-key`/`--ephemeral-seed`; `-h265` and
+  `--features` cannot both set the advertised features; `-pw`, `--password` and
+  `--random-password` cannot be combined with `--password-file`; `-p <base>` cannot be
+  combined with `--port` or with a single media port.
+- Device identifiers given to `-allow` and `-block` are normalised to twelve upper-case
+  hexadecimal digits, so a colon- or dash-separated address names the same device as a bare
+  one, and anything else is refused instead of matching nothing.
+- `-allow` without `-restrict` turns `-restrict` on and prints a warning, because the library
+  would otherwise ignore the list.
+- `-ca` without a path reports the cover art's content type and byte count on standard error
+  instead of doing nothing.
+- `-h265` enlarges the default display to 4K only when no size was stated;
+  `-h265 -s 1920x1080` keeps 1080p.
+- All log output goes to standard error. Standard output keeps the banner, the PIN and a drawn
+  password.
+- The identity seed is created readable by its owner alone (0600) on Unix, and only when it
+  does not exist: a seed that exists and cannot be read is an error, not a new identity.
+- A client is appended to the client list only when it is new, so a client that reconnects
+  does not grow the file. `-key` without a file keeps the registry in memory unless `-reg`
+  names a file.
+- An option that takes a value no longer swallows the option after it: `-n -p 7000`,
+  `-allow -restrict` and `-md -q` report that a value is needed. Numeric options still accept
+  a value that begins with a dash, so `-db -30:0` is a range.
+
+### Fixed
+
+- NaN and infinity are refused by `-vol`, `-al`, `--volume`, `--audio-latency` and `-reset`.
+  They used to pass a range check and become a value nobody asked for.
+- `-s` is bounded like the other size options: at most 16384 pixels each way and a refresh
+  rate of 1 to 240. It used to accept any size at all.
+- `-reset` is bounded at 86400 seconds, so a value too large for a `Duration` is refused
+  instead of reaching it.
+- A seed that is not hexadecimal - including one whose bytes are not ASCII - is reported
+  instead of panicking on a slice boundary.
+- A closed standard output no longer stops the program: every write is allowed to fail.
+- A mirror is paced by this program by default (`--pace-video`), instead of being left to the
+  backend. Pacing left to the backend meant the library reported every frame's arrival
+  interval and the renderer slept it before writing, so the renderer ran a fraction of a frame
+  behind the stream, its eight frame queue never drained - about a quarter of a second of
+  latency on a 30 fps mirror - and a frame was dropped whenever the two drifted, breaking the
+  H.264 reference chain that the rest of the stream depends on. Measured on one machine: the
+  queue went from a pinned 8 frames and 360 ms to 1 frame and 123 ms, and the picture stopped
+  stuttering. `--no-pace-video` restores the old behaviour and says what it costs.
+- A GStreamer run without `-vd` now says at startup that video is decoded in software. In 0.2
+  a hardware sink brought its decoder with it; in 0.3 the two are separate choices, which left
+  a mirror stream software decoded with a full frame queue - the stutter this release was
+  asked about. The README's latency section names the flags that restore the hardware path.
+
+### Performance
+
+- Everything a client can cause to be written goes through one writer thread with a bounded
+  queue of 16, so a disk write no longer runs on the async runtime. A full queue drops the
+  write and says so instead of holding up the session.
+
+### Security
+
+- Client-controlled now-playing text is stripped of control characters, kept to one line and
+  cut at 2 KiB before it reaches the console.
+- Cover art over 4 MiB, metadata over 256 KiB and a remote-control export over 4 KiB are
+  dropped rather than written.
+- The identity seed is created with 0600 permissions on Unix, and an unreadable one stops the
+  run instead of being replaced.
+- A 64 character hexadecimal token in a log record - an identity seed or a client key - is
+  replaced with `<redacted>` before it reaches the console. The library reports its identity at
+  the info level, and one verbose session would otherwise hand over the secret a receiver is
+  recognised by.
+- Known limitation, documented in the README: with `-ca`, `-md` or `-dacp`, a `SET_PARAMETER`
+  request from an unauthenticated host on the local network can still cause a file to be
+  written and a line to be printed. The bounds above limit what it can do; authenticating the
+  request needs a change in the library.
+
+### Runtime notes
+
+- A build with the `gst` feature needs GStreamer 1.0 and its base plugins on the machine that
+  runs it; without the feature it needs no media library.
+- The migration steps from 0.2.0 are in `MIGRATION.md`.
+
 ## 0.2.0 - 2026-10-24
 
 The first release of `parlor`, the command-line AirPlay receiver.
