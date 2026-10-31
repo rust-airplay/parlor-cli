@@ -69,6 +69,14 @@ an unacceptable command line earns.
 - A seed that is not hexadecimal - including one whose bytes are not ASCII - is reported
   instead of panicking on a slice boundary.
 - A closed standard output no longer stops the program: every write is allowed to fail.
+- A mirror is paced by this program by default (`--pace-video`), instead of being left to the
+  backend. Pacing left to the backend meant the library reported every frame's arrival
+  interval and the renderer slept it before writing, so the renderer ran a fraction of a frame
+  behind the stream, its eight frame queue never drained - about a quarter of a second of
+  latency on a 30 fps mirror - and a frame was dropped whenever the two drifted, breaking the
+  H.264 reference chain that the rest of the stream depends on. Measured on one machine: the
+  queue went from a pinned 8 frames and 360 ms to 1 frame and 123 ms, and the picture stopped
+  stuttering. `--no-pace-video` restores the old behaviour and says what it costs.
 - A GStreamer run without `-vd` now says at startup that video is decoded in software. In 0.2
   a hardware sink brought its decoder with it; in 0.3 the two are separate choices, which left
   a mirror stream software decoded with a full frame queue - the stutter this release was

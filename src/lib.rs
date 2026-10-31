@@ -174,6 +174,16 @@ async fn run(options: Options) -> Result<(), Error> {
         }
     }
 
+    if !options.pace_video {
+        // The other way round is not neutral: the library then reports every frame's
+        // arrival interval to the backend, which sleeps it before writing, and a renderer
+        // that is slower than the stream by one frame interval keeps its queue full.
+        log::warn!(
+            "--no-pace-video leaves the pacing to the backend, which sleeps a frame interval \
+             before writing: expect a full frame queue and dropped frames"
+        );
+    }
+
     let mut outputs = files::Outputs::new(&options)?;
 
     let mut config = rust_airplay::Config::new(options.name.clone(), seed, renderer);

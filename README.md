@@ -122,7 +122,8 @@ spelling, for a script that prefers words, the table gives both.
 | `--video-decoder-hevc <decoder>` | the decoder an H.265 mirror stream uses |
 | `-avdec` | force the software decoder |
 | `--warm-video` | start the video pipeline before the first client |
-| `--pace-video` | hold mirror frames to their capture spacing |
+| `--pace-video` | pace mirror frames here rather than in the backend (the default) |
+| `--no-pace-video` | let the backend pace them instead; it costs a full frame queue |
 | `--render <backend>` | what plays the media: `null` or `gst` |
 | `--audio-codec <coding>` | the coding a session falls back to: `alac` or `aac-eld` |
 | `-ca [file]`, `--cover-art [file]` | report each image's type and size on standard error, or write it to a file |
@@ -218,12 +219,29 @@ rather than holding up the session.
 
 ## Latency
 
-A mirror is judged by how quickly the picture follows the device. The fastest path is the
-hardware one, and it takes two flags, not one: since the 0.3 backend a sink and a decoder are
+A mirror is judged by how quickly the picture follows the device, and two separate things
+spend it.
+
+**A queue that never drains.** With pacing left to the backend, the library reports every
+frame's arrival interval to the renderer, and the renderer sleeps that interval before it
+writes. That makes the renderer a hair slower than the stream, so its eight frame queue never
+drains: about a quarter of a second of latency on a 30 fps mirror, and a dropped frame - a
+broken H.264 reference chain - whenever the two drift apart. This program paces the frames
+itself instead, which drains the queue to one frame; that is the default, and the reason
+`--no-pace-video` warns. `-v` shows both halves:
+
+```text
+media     pace frame 12: queued 3 ms, pacer wanted 31 ms, waited 0 ms
+media     400 video frames queued, 1 waiting
+```
+
+`8 waiting` (the queue's bound) beside a `queued` in the hundreds of milliseconds is a
+renderer that cannot keep up; `1 waiting` and a few milliseconds is a healthy session.
+
+**A decoder that is not the hardware one.** Since the 0.3 backend a sink and a decoder are
 separate choices, so `-vs d3d11videosink` no longer brings `d3d11h264dec` with it. A run that
-names a hardware sink but no decoder decodes every frame on the CPU (`avdec_h264`), and a
-1080p stream then only just keeps up: the receiver's eight frame queue stays full, a frame
-waits about a quarter of a second for the renderer, and any jitter drops one.
+names a hardware sink but no decoder decodes every frame on the CPU (`avdec_h264`) and has
+less headroom, which shows up as the full queue above once the picture gets busy.
 
 ```sh
 parlor -vs d3d11videosink -vd d3d11h264dec
@@ -236,16 +254,7 @@ decodes one coding:
 parlor -h265 -vs d3d11videosink -vd d3d11h264dec --video-decoder-hevc d3d11h265dec
 ```
 
-A run without `-vd` says so at startup, and `-v` shows where a frame waits:
-
-```text
-media     pace frame 12: queued 262 ms, pacer wanted 31 ms, waited 0 ms
-media     400 video frames queued, 8 waiting
-```
-
-A `queued` in the hundreds of milliseconds with `8 waiting` (the queue's bound) is the
-signature of a renderer that cannot keep up; a few milliseconds and `0 waiting` is a
-receiver waiting for the client.
+A run without `-vd` says so at startup.
 
 ## Known limitations
 

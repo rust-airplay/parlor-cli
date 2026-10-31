@@ -102,7 +102,8 @@ Waiting for a client. Press Ctrl+C to stop.
 | `--video-decoder-hevc <decoder>` | H.265 镜像流使用的解码器 |
 | `-avdec` | 强制使用软件解码器 |
 | `--warm-video` | 在第一个客户端之前启动视频管线 |
-| `--pace-video` | 让镜像帧按采集间隔输出 |
+| `--pace-video` | 由本程序而不是后端来节拍镜像帧（默认） |
+| `--no-pace-video` | 交给后端节拍；代价是整个帧队列被占满 |
 | `--render <backend>` | 用什么播放：`null` 或 `gst` |
 | `--audio-codec <coding>` | 会话回退的编码：`alac` 或 `aac-eld` |
 | `-ca [file]`、`--cover-art [file]` | 把封面图的类型与大小报告到标准错误，或写入文件 |
@@ -167,7 +168,18 @@ Waiting for a client. Press Ctrl+C to stop.
 
 ## 延迟
 
-投屏看的是画面跟手的快慢。最快的路径是硬件路径，而它需要两个参数而不是一个：0.3 起 sink 与解码器是两个独立选择，`-vs d3d11videosink` 不再顺带换掉解码器。只指定硬件 sink、不指定解码器时，每帧都由 CPU 解（`avdec_h264`）；1080p 流在这种配置下只是勉强跟上，接收端那 8 帧的队列会一直是满的，一帧要等约四分之一秒才轮到渲染器，稍有抖动就丢帧。
+投屏看的是画面跟手的快慢，而它会被两件互不相同的事吃掉。
+
+**排不空的队列。** 把节拍交给后端时，库会把每帧的到达间隔告诉渲染器，渲染器在写之前先睡掉这个间隔。于是渲染器永远比流慢一点点，那 8 帧的队列也就永远排不空：30 fps 的镜像上约四分之一秒的延迟，而且两边一有漂移就丢帧——H.264 的参考链随之断裂。本程序改为自己节拍，队列会排到 1 帧；这是默认行为，也是 `--no-pace-video` 会打警告的原因。`-v` 会把两半都显示出来：
+
+```text
+media     pace frame 12: queued 3 ms, pacer wanted 31 ms, waited 0 ms
+media     400 video frames queued, 1 waiting
+```
+
+`8 waiting`（队列上限）加上几百毫秒的 `queued`，就是渲染器跟不上；`1 waiting` 且只有几毫秒，才是健康的会话。
+
+**不是硬件的解码器。** 0.3 起 sink 与解码器是两个独立选择，`-vs d3d11videosink` 不再顺带换掉解码器。只指定硬件 sink、不指定解码器时，每帧都由 CPU 解（`avdec_h264`），余量更小——画面一忙，就会表现成上面那个满队列。
 
 ```sh
 parlor -vs d3d11videosink -vd d3d11h264dec
@@ -179,14 +191,7 @@ H.265 流（`-h265`）要单独指定解码器，因为一个硬件元素只解�
 parlor -h265 -vs d3d11videosink -vd d3d11h264dec --video-decoder-hevc d3d11h265dec
 ```
 
-没有给 `-vd` 时启动会打印一条警告；`-v` 会显示每一帧等在哪里：
-
-```text
-media     pace frame 12: queued 262 ms, pacer wanted 31 ms, waited 0 ms
-media     400 video frames queued, 8 waiting
-```
-
-`queued` 达到几百毫秒、并且 `8 waiting`（队列上限）——这就是渲染器跟不上；只有几毫秒且 `0 waiting`，说明是接收端在等客户端。
+没有给 `-vd` 时启动会打印一条警告。
 
 ## 已知限制
 

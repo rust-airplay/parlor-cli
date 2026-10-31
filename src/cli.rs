@@ -64,8 +64,8 @@ The same options spelled out, for a script that prefers words:
   --name --port --bind --no-advertise --no-pin --pin --password --password-file
   --device-id --seed --seed-file --key-file --ephemeral-seed --clients-file
   --data-dir --log --render --audio-sink --video-sink --video-parser
-  --video-decoder --video-decoder-hevc --warm-video --pace-video --width --height
-  --refresh-rate
+  --video-decoder --video-decoder-hevc --warm-video --pace-video --no-pace-video
+  --width --height --refresh-rate
   --max-fps --overscanned --hevc --features --restrict --allow --block
   --legacy-ports --base-port --timing-port --udp-control-port --data-port
   --mirror-port --nohold --reset --audio-latency --volume --taper --db
@@ -304,7 +304,13 @@ pub struct Options {
     pub fps_data: bool,
     /// The display offered to a client.
     pub display: DisplayOptions,
-    /// Whether the mirror stream is paced by its timestamps.
+    /// Whether this program paces the mirror stream itself.
+    ///
+    /// On by default, and that is a fix rather than a preference: with pacing off the
+    /// library tells the backend the arrival interval of every frame, and the backend
+    /// sleeps it before writing. That makes the renderer permanently a little slower than
+    /// the stream, so its queue never drains - 8 frames and a quarter of a second of lag
+    /// on a 30 fps mirror, and a dropped frame whenever the two drift.
     pub pace_video: bool,
     /// The directory this program keeps its files in, when the caller named one.
     pub data_dir: Option<PathBuf>,
@@ -352,7 +358,9 @@ impl Default for Options {
             volume: 1.0,
             fps_data: false,
             display: DisplayOptions::default(),
-            pace_video: false,
+            // Pacing here is what keeps the renderer's queue empty; see the field's own
+            // documentation for why the other way round leaves a session behind.
+            pace_video: true,
             data_dir: None,
             warnings: Vec::new(),
         }
@@ -660,6 +668,7 @@ pub fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Parsed
             }
             "--warm-video" => options.gst.warm_video = true,
             "--pace-video" => options.pace_video = true,
+            "--no-pace-video" => options.pace_video = false,
             "--width" => {
                 let value = next_word(&mut arguments, "--width")?
                     .parse()
@@ -1401,6 +1410,15 @@ mod tests {
                 RenderBackend::Null
             }
         );
+    }
+
+    #[test]
+    fn the_picture_is_paced_by_default_and_can_be_turned_off() {
+        // Pacing here keeps the renderer's queue empty; leaving it to the backend is what
+        // made a 30 fps mirror sit a whole queue behind and drop frames.
+        assert!(Options::default().pace_video);
+        assert!(options(&["--pace-video"]).pace_video);
+        assert!(!options(&["--no-pace-video"]).pace_video);
     }
 
     #[test]
