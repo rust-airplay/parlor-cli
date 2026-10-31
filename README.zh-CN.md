@@ -98,7 +98,8 @@ Waiting for a client. Press Ctrl+C to stop.
 | `-as <sink>`、`--audio-sink <sink>` | GStreamer 音频 sink |
 | `-vs <sink>`、`--video-sink <sink>` | GStreamer 视频 sink |
 | `-vp <parser>`、`--video-parser <parser>` | 镜像管线使用的 parser |
-| `-vd <decoder>`、`--video-decoder <decoder>` | 镜像管线使用的解码器 |
+| `-vd <decoder>`、`--video-decoder <decoder>` | H.264 镜像流使用的解码器 |
+| `--video-decoder-hevc <decoder>` | H.265 镜像流使用的解码器 |
 | `-avdec` | 强制使用软件解码器 |
 | `--warm-video` | 在第一个客户端之前启动视频管线 |
 | `--pace-video` | 让镜像帧按采集间隔输出 |
@@ -166,7 +167,26 @@ Waiting for a client. Press Ctrl+C to stop.
 
 ## 延迟
 
-投屏看的是画面跟手的快慢。最快的路径是硬件路径，在有它的平台上就是默认：Windows 上的 `d3d11h264dec` 进 `d3d11videosink`。`-vs d3d11videosink` 会把解码器一起换过去；单独指定 sink 与解码器，会让硬件 sink 被软件解码器喂数据。
+投屏看的是画面跟手的快慢。最快的路径是硬件路径，而它需要两个参数而不是一个：0.3 起 sink 与解码器是两个独立选择，`-vs d3d11videosink` 不再顺带换掉解码器。只指定硬件 sink、不指定解码器时，每帧都由 CPU 解（`avdec_h264`）；1080p 流在这种配置下只是勉强跟上，接收端那 8 帧的队列会一直是满的，一帧要等约四分之一秒才轮到渲染器，稍有抖动就丢帧。
+
+```sh
+parlor -vs d3d11videosink -vd d3d11h264dec
+```
+
+H.265 流（`-h265`）要单独指定解码器，因为一个硬件元素只解一种编码：
+
+```sh
+parlor -h265 -vs d3d11videosink -vd d3d11h264dec --video-decoder-hevc d3d11h265dec
+```
+
+没有给 `-vd` 时启动会打印一条警告；`-v` 会显示每一帧等在哪里：
+
+```text
+media     pace frame 12: queued 262 ms, pacer wanted 31 ms, waited 0 ms
+media     400 video frames queued, 8 waiting
+```
+
+`queued` 达到几百毫秒、并且 `8 waiting`（队列上限）——这就是渲染器跟不上；只有几毫秒且 `0 waiting`，说明是接收端在等客户端。
 
 ## 已知限制
 

@@ -64,7 +64,8 @@ The same options spelled out, for a script that prefers words:
   --name --port --bind --no-advertise --no-pin --pin --password --password-file
   --device-id --seed --seed-file --key-file --ephemeral-seed --clients-file
   --data-dir --log --render --audio-sink --video-sink --video-parser
-  --video-decoder --warm-video --pace-video --width --height --refresh-rate
+  --video-decoder --video-decoder-hevc --warm-video --pace-video --width --height
+  --refresh-rate
   --max-fps --overscanned --hevc --features --restrict --allow --block
   --legacy-ports --base-port --timing-port --udp-control-port --data-port
   --mirror-port --nohold --reset --audio-latency --volume --taper --db
@@ -181,8 +182,13 @@ pub struct GstOptions {
     pub video_sink: Option<String>,
     /// The parser for the mirror stream.
     pub video_parser: Option<String>,
-    /// The decoder for the mirror stream.
+    /// The decoder for an H.264 mirror stream.
     pub video_decoder: Option<String>,
+    /// The decoder for an H.265 mirror stream.
+    ///
+    /// The two codings need two elements: a hardware decoder decodes one of them, so a
+    /// receiver that offers HEVC and names only -vd still decodes HEVC in software.
+    pub video_decoder_hevc: Option<String>,
     /// Use the software decoder for every coding the backend can decode.
     pub software_decoder: bool,
     /// Start the video pipeline before any client connects.
@@ -197,6 +203,7 @@ impl GstOptions {
             || self.video_sink.is_some()
             || self.video_parser.is_some()
             || self.video_decoder.is_some()
+            || self.video_decoder_hevc.is_some()
             || self.software_decoder
             || self.warm_video
     }
@@ -646,6 +653,10 @@ pub fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Parsed
             }
             "--video-decoder" => {
                 options.gst.video_decoder = Some(next_word(&mut arguments, "--video-decoder")?);
+            }
+            "--video-decoder-hevc" => {
+                options.gst.video_decoder_hevc =
+                    Some(next_word(&mut arguments, "--video-decoder-hevc")?);
             }
             "--warm-video" => options.gst.warm_video = true,
             "--pace-video" => options.pace_video = true,
@@ -1413,6 +1424,7 @@ mod tests {
                 video_sink: Some("ximagesink".to_owned()),
                 video_parser: Some("h264parse".to_owned()),
                 video_decoder: Some("avdec_h264".to_owned()),
+                video_decoder_hevc: None,
                 software_decoder: true,
                 warm_video: true,
             }

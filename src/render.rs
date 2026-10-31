@@ -50,6 +50,9 @@ fn open_gst(options: &Options) -> Result<Arc<dyn Renderer>, Error> {
     if let Some(decoder) = &options.gst.video_decoder {
         backend = backend.with_video_decoder(VideoCodec::H264, decoder.clone());
     }
+    if let Some(decoder) = &options.gst.video_decoder_hevc {
+        backend = backend.with_video_decoder(VideoCodec::H265, decoder.clone());
+    }
     if options.gst.software_decoder {
         // The software decoder is the one that always exists; a machine without a hardware
         // decoder needs it, and a user debugging a picture wants to know which one ran.
@@ -59,6 +62,15 @@ fn open_gst(options: &Options) -> Result<Arc<dyn Renderer>, Error> {
     }
     if options.gst.warm_video {
         backend = backend.with_warm_video(true);
+    }
+    // Since the 0.3 backend a sink and a decoder are two choices: a hardware sink fed by
+    // the default avdec_* decodes every frame on the CPU, and a mirror stream that only
+    // just keeps up shows as a stutter. Say which one this run will use, because the
+    // difference is a flag nobody would guess.
+    if options.gst.video_decoder.is_none() && !options.gst.software_decoder {
+        log::warn!(
+            "video is decoded in software; -vd d3d11h264dec (or the decoder this machine has) uses the GPU"
+        );
     }
 
     let renderer = rust_airplay_gstream::GstRenderer::with_options(backend)

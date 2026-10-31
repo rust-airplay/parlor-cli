@@ -118,7 +118,8 @@ spelling, for a script that prefers words, the table gives both.
 | `-as <sink>`, `--audio-sink <sink>` | the GStreamer audio sink |
 | `-vs <sink>`, `--video-sink <sink>` | the GStreamer video sink |
 | `-vp <parser>`, `--video-parser <parser>` | the parser the mirror pipeline uses |
-| `-vd <decoder>`, `--video-decoder <decoder>` | the decoder the mirror pipeline uses |
+| `-vd <decoder>`, `--video-decoder <decoder>` | the decoder an H.264 mirror stream uses |
+| `--video-decoder-hevc <decoder>` | the decoder an H.265 mirror stream uses |
 | `-avdec` | force the software decoder |
 | `--warm-video` | start the video pipeline before the first client |
 | `--pace-video` | hold mirror frames to their capture spacing |
@@ -218,9 +219,33 @@ rather than holding up the session.
 ## Latency
 
 A mirror is judged by how quickly the picture follows the device. The fastest path is the
-hardware one, which is the default where it exists: `d3d11h264dec` into `d3d11videosink` on
-Windows. `-vs d3d11videosink` brings that decoder with it; naming a sink and a decoder
-separately is how a hardware sink ends up fed by a software decoder.
+hardware one, and it takes two flags, not one: since the 0.3 backend a sink and a decoder are
+separate choices, so `-vs d3d11videosink` no longer brings `d3d11h264dec` with it. A run that
+names a hardware sink but no decoder decodes every frame on the CPU (`avdec_h264`), and a
+1080p stream then only just keeps up: the receiver's eight frame queue stays full, a frame
+waits about a quarter of a second for the renderer, and any jitter drops one.
+
+```sh
+parlor -vs d3d11videosink -vd d3d11h264dec
+```
+
+An HEVC stream (`-h265`) needs its decoder named separately, because one hardware element
+decodes one coding:
+
+```sh
+parlor -h265 -vs d3d11videosink -vd d3d11h264dec --video-decoder-hevc d3d11h265dec
+```
+
+A run without `-vd` says so at startup, and `-v` shows where a frame waits:
+
+```text
+media     pace frame 12: queued 262 ms, pacer wanted 31 ms, waited 0 ms
+media     400 video frames queued, 8 waiting
+```
+
+A `queued` in the hundreds of milliseconds with `8 waiting` (the queue's bound) is the
+signature of a renderer that cannot keep up; a few milliseconds and `0 waiting` is a
+receiver waiting for the client.
 
 ## Known limitations
 

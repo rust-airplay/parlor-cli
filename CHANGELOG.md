@@ -15,6 +15,8 @@ an unacceptable command line earns.
 - `--password-file <path|->` reads the SETUP password from a file, or from standard input for
   `-`; `--seed-file <path>` reads the identity seed from a file.
 - `--data-dir <path>` names the directory the identity and the client list live in.
+- `--video-decoder-hevc <decoder>` names the decoder for an H.265 stream. `-vd` names the
+  H.264 one, and since the 0.3 backend a sink no longer brings a decoder with it.
 - `--pin` and `--quiet` are in the usage text. Both worked; neither was listed.
 - Exit codes: 0 for a successful run, 1 for a run that could not start or that failed, 2 for a
   command line this program cannot accept.
@@ -67,6 +69,10 @@ an unacceptable command line earns.
 - A seed that is not hexadecimal - including one whose bytes are not ASCII - is reported
   instead of panicking on a slice boundary.
 - A closed standard output no longer stops the program: every write is allowed to fail.
+- A GStreamer run without `-vd` now says at startup that video is decoded in software. In 0.2
+  a hardware sink brought its decoder with it; in 0.3 the two are separate choices, which left
+  a mirror stream software decoded with a full frame queue - the stutter this release was
+  asked about. The README's latency section names the flags that restore the hardware path.
 
 ### Performance
 
