@@ -623,9 +623,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.34"
+version = "0.4.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
+checksum = "5d15f86d12da44cd8d4ec3c73984537eb7f4cadcb9776a575a0a8a05ca11005c"
 
 [[package]]
 name = "md-5"
@@ -737,7 +737,7 @@ dependencies = [
 
 [[package]]
 name = "parlor-cli"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "getrandom",
  "log",
@@ -851,9 +851,8 @@ dependencies = [
 
 [[package]]
 name = "rust-airplay"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9227074fdfd997c643361b4d32d88e4fd4baed2fc3ceb75ba803ad2946e10585"
+version = "0.3.2"
+source = "git+https://github.com/rust-airplay/rust-airplay?rev=6773031983526809cf521d54fb3e0b33c2cb8069#6773031983526809cf521d54fb3e0b33c2cb8069"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -877,8 +876,7 @@ dependencies = [
 [[package]]
 name = "rust-airplay-gstream"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fd2a1b2b9966564eec297e97de6564406c24ab02cbde4ea2bea7ca749a447d6"
+source = "git+https://github.com/rust-airplay/rust-airplay-gstream?rev=08154bccd2630ffa98e46139995f69923188825e#08154bccd2630ffa98e46139995f69923188825e"
 dependencies = [
  "gstreamer",
  "gstreamer-app",
@@ -995,9 +993,9 @@ checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 
 [[package]]
 name = "smallvec"
-version = "1.16.3"
+version = "1.16.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b3dc8af474f516a851ff4bd12db780f948b9250ad37211e4eec0bccea54e01b"
+checksum = "d0d5d4b1981b8bbbb7aed204cae5726d683d5d6ac7e74ec54122ea28f315e7c8"
 
 [[package]]
 name = "socket-pktinfo"

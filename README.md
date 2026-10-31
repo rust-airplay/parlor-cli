@@ -25,14 +25,14 @@ through the binary; `src/main.rs` only hands over to it. The pieces are the comm
 - Rust 1.85 or newer to build; the MSRV is checked in CI.
 - `--features gst` needs GStreamer 1.0 and its base plugins: the development files to build,
   the runtime and the plugins to play. A build without the feature needs no media library.
-- `rust-airplay` and `rust-airplay-gstream` **0.3.1 or newer**. 0.3.0 has a pacing defect that
-  leaves every mirror a frame queue behind and drops frames; see [Latency](#latency).
+- **A network connection for the first build.** `rust-airplay` and `rust-airplay-gstream`
+  are git dependencies pinned to a revision, not published versions, because the releases
+  this program needs are ahead of crates.io. `Cargo.toml` carries the revisions; a build
+  clones them once and then works offline.
 
-  **Known issue in 0.3.1:** a frame queue that overflows once stops for the rest of the
-  session if the client never sends another key frame - a still picture where the pointer
-  stops following. The receiver waits for a key frame with no timeout, and an AirPlay client
-  only sends one when its picture changes. Until that wait is bounded, a session can freeze
-  after it has been running for a while; reconnecting clears it.
+  The pinned `rust-airplay` is the one that bounds the wait for a key frame after a queue
+  overflow. Without it, a single overflow freezes the picture for the rest of the session;
+  see [Latency](#latency) and [Diagnosing a mirror](#diagnosing-a-mirror).
 
 ## Building
 
@@ -40,6 +40,9 @@ through the binary; `src/main.rs` only hands over to it. The pieces are the comm
 cargo build --release
 cargo build --release --features gst
 ```
+
+The first build clones the two libraries at the revisions named in `Cargo.toml`; after that
+`--offline` works and `--locked` keeps the graph exactly as tested.
 
 Without `--features gst` the program builds and plays nothing: it reads a session and reports
 it, which is how a session is checked without a sound card. With the feature, GStreamer must be

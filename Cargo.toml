@@ -4,7 +4,7 @@ description = "parlor: an AirPlay receiver on the command line"
 repository = "https://github.com/rust-airplay/parlor-cli"
 homepage = "https://github.com/rust-airplay/parlor-cli"
 readme = "README.md"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2024"
 rust-version = "1.85"
 license = "GPL-3.0-or-later"
@@ -26,13 +26,23 @@ default = []
 gst = ["dep:rust-airplay-gstream"]
 
 [dependencies]
-# The core library and the playback backend, both published on crates.io.
-rust-airplay = "0.3.1"
+# Pinned to revisions, not versions: rust-airplay 0.3.2 bounds the wait for a key frame
+# after a queue overflow, and that release is not on crates.io yet. The version in each
+# requirement is what the patch below has to satisfy.
+rust-airplay = "0.3.2"
 # The playback backend, only with the gst feature.
 rust-airplay-gstream = { version = "0.3.1", optional = true }
 getrandom = "0.2"
 log = "0.4"
 tokio = { version = "1.53.2", default-features = false, features = ["rt-multi-thread", "macros"] }
+
+# The backend depends on rust-airplay from the registry. Patching the registry here is what
+# keeps one copy of the library in the build: without it cargo would compile the git
+# revision for this crate and a published one for the backend, and the two would not share
+# types.
+[patch.crates-io]
+rust-airplay = { git = "https://github.com/rust-airplay/rust-airplay", rev = "6773031983526809cf521d54fb3e0b33c2cb8069" }
+rust-airplay-gstream = { git = "https://github.com/rust-airplay/rust-airplay-gstream", rev = "08154bccd2630ffa98e46139995f69923188825e" }
 
 [lints.rust]
 unsafe_code = "forbid"

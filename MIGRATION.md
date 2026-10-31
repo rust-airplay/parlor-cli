@@ -2,8 +2,22 @@
 
 中文见 [MIGRATION.zh-CN.md](MIGRATION.zh-CN.md)。
 
-Three migrations are described here: the split of this program out of the library's workspace,
-which made it 0.2.0, the command line changes of 0.3.0, and the library fix of 0.3.1.
+Four migrations are described here: the split of this program out of the library's workspace,
+which made it 0.2.0, the command line changes of 0.3.0, the library fix of 0.3.1, and the git
+dependencies of 0.3.2.
+
+## 0.3.1 to 0.3.2
+
+Nothing to change in a configuration, and one thing to know about building.
+
+1. **The two libraries are git dependencies now.** `Cargo.toml` names a revision of each
+   instead of a version, because the release that fixes the frozen picture is ahead of
+   crates.io. The first build clones them; after that `--offline` works. A lock file from
+   0.3.1 has to be regenerated: `cargo update`.
+2. **The freeze is fixed.** rust-airplay 0.3.2 bounds the wait for a key frame after a queue
+   overflow, so a session no longer stops when the client has nothing new to send. Nothing in
+   the command line changes.
+3. **Everything else is the same** as 0.3.1.
 
 ## 0.3.0 to 0.3.1
 

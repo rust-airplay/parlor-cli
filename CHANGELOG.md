@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.3.2 - 2026-10-31
+
+Pins the two libraries to git revisions that carry the fix for a frozen mirror, and names
+them as such.
+
+### Changed
+
+- `rust-airplay` moves to the revision of its **0.3.2** release and `rust-airplay-gstream`
+  to the revision of its **0.3.1**, both as git dependencies with a fixed `rev`. The
+  releases this program needs are ahead of crates.io, and a version requirement would have
+  resolved to the broken ones.
+- A `[patch.crates-io]` block redirects the backend's own `rust-airplay` requirement to the
+  same revision. Without it, cargo would build the git revision for this crate and a
+  published one for the backend, and the two would not share types.
+- The first build now clones the two libraries; `--locked` pins the graph as tested.
+
+### Fixed
+
+- **A frozen picture after one queue overflow.** rust-airplay 0.3.1 cleared the frame queue
+  and waited for a key frame with no timeout; an AirPlay client only sends one when its
+  picture changes, so a mostly still screen never sent another. A measured session wrote 208
+  frames and then dropped 240 while the client kept sending - the picture stayed on screen
+  and the pointer stopped following. 0.3.2 bounds that wait at one second and raises the
+  startup allowance to 120 frames or two seconds, so an overflow costs a moment of
+  corruption instead of the rest of the session.
+
+### Documented
+
+- Requirements say what the git dependencies are for, and how the first build behaves.
+- The diagnosis table's frozen-picture row now points at the fix rather than at a reconnect.
+
 ## 0.3.1 - 2026-10-31
 
 Follows both libraries to 0.3.1, whose release fixes the defect that made every mirror stutter,
