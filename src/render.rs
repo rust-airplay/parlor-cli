@@ -75,6 +75,16 @@ fn open_gst(options: &Options) -> Result<Arc<dyn Renderer>, Error> {
 
     let renderer = rust_airplay_gstream::GstRenderer::with_options(backend)
         .map_err(|error| Error::run(format!("--render gst: {error}")))?;
+    // What a stream will actually be built from, because a hardware sink says nothing about
+    // the decoder behind it and the two are chosen separately since 0.3.
+    log::info!(
+        "render    h264   {}",
+        renderer.video_description(VideoCodec::H264)
+    );
+    log::info!(
+        "render    h265   {}",
+        renderer.video_description(VideoCodec::H265)
+    );
     log::info!(
         "render    gst    audio {}, video {}",
         renderer.audio_sink(),
