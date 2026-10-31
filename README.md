@@ -28,6 +28,12 @@ through the binary; `src/main.rs` only hands over to it. The pieces are the comm
 - `rust-airplay` and `rust-airplay-gstream` **0.3.1 or newer**. 0.3.0 has a pacing defect that
   leaves every mirror a frame queue behind and drops frames; see [Latency](#latency).
 
+  **Known issue in 0.3.1:** a frame queue that overflows once stops for the rest of the
+  session if the client never sends another key frame - a still picture where the pointer
+  stops following. The receiver waits for a key frame with no timeout, and an AirPlay client
+  only sends one when its picture changes. Until that wait is bounded, a session can freeze
+  after it has been running for a while; reconnecting clears it.
+
 ## Building
 
 ```sh
@@ -135,7 +141,7 @@ spelling, for a script that prefers words, the table gives both.
 | `-vd <decoder>`, `--video-decoder <decoder>` | the decoder an H.264 mirror stream uses |
 | `--video-decoder-hevc <decoder>` | the decoder an H.265 mirror stream uses |
 | `-avdec` | force the software decoder |
-| `--warm-video` | start the video pipeline before the first client |
+| `--warm-video` | keep the video pipeline between sessions, so the next connection does not pay for a window |
 | `--pace-video` | hold mirror frames to their capture spacing; off by default, and costs at most 40 ms a frame |
 | `--no-pace-video` | name the default explicitly: frames go as fast as the renderer takes them |
 | `--render <backend>` | what plays the media: `null` or `gst` |
@@ -286,6 +292,7 @@ media     pace frame 12: queued 3 ms, pacer wanted 31 ms, waited 0 ms
 | `queued` in the hundreds of milliseconds | frames wait in the queue before the renderer | the same as above |
 | `h264 ... avdec_h264` in the pipeline line | video is decoded on the CPU | `-vd d3d11h264dec`, or whatever decoder the machine has |
 | `the renderer fell behind` | the queue was cleared; frames are dropped until the next key frame | the same as above |
+| `written` stops climbing while `received` keeps going, picture frozen | the key frame the receiver is waiting for never comes (see the known issue in [Requirements](#requirements)) | reconnect; the fix belongs in the library |
 
 `-FPSdata` adds the client's own streaming report, which says what the device thinks of the
 connection - the one thing the receiver cannot measure itself.

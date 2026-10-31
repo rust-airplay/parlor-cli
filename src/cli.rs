@@ -191,7 +191,7 @@ pub struct GstOptions {
     pub video_decoder_hevc: Option<String>,
     /// Use the software decoder for every coding the backend can decode.
     pub software_decoder: bool,
-    /// Start the video pipeline before any client connects.
+    /// Keep the video pipeline between sessions rather than ending it with each one.
     pub warm_video: bool,
 }
 

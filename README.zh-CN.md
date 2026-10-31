@@ -16,6 +16,8 @@
 - `--features gst` 需要 GStreamer 1.0 及其基础插件：构建要开发文件，运行要运行时与插件。不带该 feature 的构建不需要任何媒体库。
 - `rust-airplay` 与 `rust-airplay-gstream` 需要 **0.3.1 或更新**。0.3.0 有一处节拍缺陷，会让每一次投屏都落后一个帧队列并丢帧；见[延迟](#延迟)。
 
+  **0.3.1 的已知问题：** 帧队列只要溢出一次，且客户端之后不再发关键帧，画面就会停住——画面还在，指针不再跟手。接收端等关键帧没有超时，而 AirPlay 客户端只在新画面出现时才发关键帧。在这个等待加上上限之前，会话运行一段时间后可能冻结；重新连接可以恢复。
+
 ## 构建
 
 ```sh
@@ -109,7 +111,7 @@ Waiting for a client. Press Ctrl+C to stop.
 | `-vd <decoder>`、`--video-decoder <decoder>` | H.264 镜像流使用的解码器 |
 | `--video-decoder-hevc <decoder>` | H.265 镜像流使用的解码器 |
 | `-avdec` | 强制使用软件解码器 |
-| `--warm-video` | 在第一个客户端之前启动视频管线 |
+| `--warm-video` | 会话之间保留视频管线，下一次连接不必再等窗口创建 |
 | `--pace-video` | 让镜像帧按采集间隔输出；默认关闭，每帧最多花 40 ms |
 | `--no-pace-video` | 显式写出默认行为：帧以渲染器能吃下的速度送出 |
 | `--render <backend>` | 用什么播放：`null` 或 `gst` |
@@ -216,6 +218,7 @@ media     pace frame 12: queued 3 ms, pacer wanted 31 ms, waited 0 ms
 | `queued` 达到几百毫秒 | 帧在队列里等渲染器 | 同上 |
 | 管线行里出现 `avdec_h264` | 视频在用 CPU 解 | 用 `-vd d3d11h264dec`，或这台机器上的硬件解码器 |
 | `the renderer fell behind` | 队列已被清空，正在丢帧直到下一个关键帧 | 同上 |
+| `written` 不再增长而 `received` 继续增长、画面停住 | 接收端在等的那一帧关键帧永远不来（见[依赖要求](#依赖要求)里的已知问题） | 重新连接；根治在库里 |
 
 `-FPSdata` 会额外打印客户端自己上报的流报告——那是接收端唯一无法自己测量的东西。
 

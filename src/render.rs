@@ -96,9 +96,9 @@ fn open_gst(options: &Options) -> Result<Arc<dyn Renderer>, Error> {
     log::info!(
         "render    video  {}",
         if renderer.video_is_warm() {
-            "warm (started before any client, so a connection does not wait for a window)"
+            "warm (kept between sessions, so the next connection does not wait for a window)"
         } else {
-            "cold (started when a client connects; --warm-video starts it now)"
+            "cold (a pipeline per session; --warm-video keeps one between them)"
         }
     );
     Ok(Arc::new(renderer))
